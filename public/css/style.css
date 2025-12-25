@@ -1,0 +1,25 @@
+/* ===== GLOBAL RETRO SETTINGS ===== */
+@import url('https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap');
+
+:root {
+    --cardboard: #f4e9d8;
+    --paper-white: #fffdfa;
+    --ink-black: #2c2c2c;
+    --border-thick: 3px solid #2c2c2c;
+    --retro-font: 'Arvo', serif;
+    --ticker-font: 'Courier New', Courier, monospace;
+}
+
+/* Global Box Sizing Fix */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #d2b48c;
+    background-image: radial-gradient(#bc9b6a 1px, transparent 0);
+    background-size: 24px 24px;
+    font-family: var(--retro-font);
+    color: var(--ink-black);
+    margin: 20px;
+}

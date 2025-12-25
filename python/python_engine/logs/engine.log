@@ -1,0 +1,856 @@
+2025-12-20 19:07:13,113 - INFO - Starting Stock Market Game Engine...
+2025-12-20 19:07:13,114 - INFO - GameEngine initialized
+2025-12-20 19:07:13,115 - INFO - Game Engine started on 127.0.0.1:9999
+2025-12-20 19:07:13,116 - INFO - Max connections: 10
+2025-12-20 19:07:13,116 - INFO - Waiting for PHP connections...
+2025-12-20 19:08:35,977 - INFO - New connection from ('127.0.0.1', 58233). Active: 1
+2025-12-20 19:08:36,095 - INFO - Connection closed: ('127.0.0.1', 58233). Active: 0
+2025-12-20 19:10:52,286 - INFO - New connection from ('127.0.0.1', 58238). Active: 1
+2025-12-20 19:10:52,325 - ERROR - Unexpected error: GameEngine.create_new_game() missing 1 required positional argument: 'player_count'
+2025-12-20 19:10:52,358 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 140, in process_request
+    # Execute command
+               ^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 47, in get_game
+    self.create_new_game(game_id, player_count)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: GameEngine.create_new_game() missing 1 required positional argument: 'player_count'
+
+2025-12-20 19:10:52,361 - INFO - Connection closed: ('127.0.0.1', 58238). Active: 0
+2025-12-20 19:13:39,313 - INFO - Starting Stock Market Game Engine...
+2025-12-20 19:13:39,314 - INFO - GameEngine initialized
+2025-12-20 19:13:39,315 - INFO - Game Engine started on 127.0.0.1:9999
+2025-12-20 19:13:39,315 - INFO - Max connections: 10
+2025-12-20 19:13:39,316 - INFO - Waiting for PHP connections...
+2025-12-20 19:14:04,805 - INFO - New connection from ('127.0.0.1', 58253). Active: 1
+2025-12-20 19:14:04,818 - INFO - Created new game: test_game
+2025-12-20 19:14:04,819 - INFO - Connection closed: ('127.0.0.1', 58253). Active: 0
+2025-12-20 19:14:04,819 - INFO - New connection from ('127.0.0.1', 58254). Active: 1
+2025-12-20 19:14:04,820 - INFO - Connection closed: ('127.0.0.1', 58254). Active: 0
+2025-12-20 19:14:04,821 - INFO - New connection from ('127.0.0.1', 58255). Active: 1
+2025-12-20 19:14:04,821 - INFO - Connection closed: ('127.0.0.1', 58255). Active: 0
+2025-12-20 19:14:04,822 - INFO - New connection from ('127.0.0.1', 58256). Active: 1
+2025-12-20 19:14:04,872 - INFO - Connection closed: ('127.0.0.1', 58256). Active: 0
+2025-12-20 19:14:04,873 - INFO - New connection from ('127.0.0.1', 58257). Active: 1
+2025-12-20 19:14:04,874 - INFO - Connection closed: ('127.0.0.1', 58257). Active: 0
+2025-12-20 19:14:04,874 - INFO - New connection from ('127.0.0.1', 58258). Active: 1
+2025-12-20 19:14:04,875 - INFO - Connection closed: ('127.0.0.1', 58258). Active: 0
+2025-12-20 20:01:07,703 - INFO - Starting Stock Market Game Engine...
+2025-12-20 20:01:07,704 - INFO - GameEngine initialized
+2025-12-20 20:01:07,707 - INFO - Game Engine started on 127.0.0.1:9999
+2025-12-20 20:01:07,708 - INFO - Max connections: 10
+2025-12-20 20:01:07,709 - INFO - Waiting for PHP connections...
+2025-12-20 20:01:13,618 - INFO - New connection from ('127.0.0.1', 58662). Active: 1
+2025-12-20 20:01:13,631 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:01:13,808 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:01:13,811 - INFO - Connection closed: ('127.0.0.1', 58662). Active: 0
+2025-12-20 20:03:11,726 - INFO - New connection from ('127.0.0.1', 58678). Active: 1
+2025-12-20 20:03:11,727 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:03:11,728 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:03:11,729 - INFO - Connection closed: ('127.0.0.1', 58678). Active: 0
+2025-12-20 20:03:24,160 - INFO - New connection from ('127.0.0.1', 58684). Active: 1
+2025-12-20 20:03:24,162 - INFO - Created new game: default_game
+2025-12-20 20:03:24,185 - INFO - Connection closed: ('127.0.0.1', 58684). Active: 0
+2025-12-20 20:05:57,085 - INFO - New connection from ('127.0.0.1', 58716). Active: 1
+2025-12-20 20:05:57,085 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:05:57,086 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:05:57,089 - INFO - Connection closed: ('127.0.0.1', 58716). Active: 0
+2025-12-20 20:07:17,132 - INFO - New connection from ('127.0.0.1', 58721). Active: 1
+2025-12-20 20:07:17,133 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:07:17,134 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:07:17,136 - INFO - Connection closed: ('127.0.0.1', 58721). Active: 0
+2025-12-20 20:08:21,132 - INFO - New connection from ('127.0.0.1', 58734). Active: 1
+2025-12-20 20:08:21,133 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:08:21,134 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:08:21,135 - INFO - Connection closed: ('127.0.0.1', 58734). Active: 0
+2025-12-20 20:08:23,820 - INFO - New connection from ('127.0.0.1', 58738). Active: 1
+2025-12-20 20:08:23,821 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:08:23,822 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:08:23,823 - INFO - Connection closed: ('127.0.0.1', 58738). Active: 0
+2025-12-20 20:09:01,489 - INFO - New connection from ('127.0.0.1', 58758). Active: 1
+2025-12-20 20:09:01,490 - INFO - Connection closed: ('127.0.0.1', 58758). Active: 0
+2025-12-20 20:11:05,308 - INFO - New connection from ('127.0.0.1', 58769). Active: 1
+2025-12-20 20:11:05,309 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:11:05,309 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:11:05,311 - INFO - Connection closed: ('127.0.0.1', 58769). Active: 0
+2025-12-20 20:11:07,364 - INFO - New connection from ('127.0.0.1', 58770). Active: 1
+2025-12-20 20:11:07,365 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:11:07,366 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:11:07,367 - INFO - Connection closed: ('127.0.0.1', 58770). Active: 0
+2025-12-20 20:11:27,026 - INFO - New connection from ('127.0.0.1', 58775). Active: 1
+2025-12-20 20:11:27,026 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:11:27,027 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:11:27,028 - INFO - Connection closed: ('127.0.0.1', 58775). Active: 0
+2025-12-20 20:12:46,799 - INFO - New connection from ('127.0.0.1', 58783). Active: 1
+2025-12-20 20:12:46,800 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:12:46,801 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:12:46,802 - INFO - Connection closed: ('127.0.0.1', 58783). Active: 0
+2025-12-20 20:12:46,802 - INFO - New connection from ('127.0.0.1', 58784). Active: 1
+2025-12-20 20:12:46,803 - ERROR - Unexpected error: 'list' object has no attribute 'get'
+2025-12-20 20:12:46,804 - ERROR - Traceback (most recent call last):
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 145, in process_request
+    response = self.handle_command(game_id, action, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\xampp\stock_ticker_private\python_engine\game_engine.py", line 55, in handle_command
+    player_count = params.get("player_count", 4)
+                   ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+2025-12-20 20:12:46,805 - INFO - Connection closed: ('127.0.0.1', 58784). Active: 0
+2025-12-20 20:21:09,838 - INFO - Starting Stock Market Game Engine...
+2025-12-20 20:21:09,851 - INFO - GameEngine initialized
+2025-12-20 20:21:09,862 - INFO - Game Engine started on 127.0.0.1:9999
+2025-12-20 20:21:09,862 - INFO - Max connections: 10
+2025-12-20 20:21:09,862 - INFO - Waiting for PHP connections...
+2025-12-20 20:21:14,510 - INFO - New connection from ('127.0.0.1', 58821). Active: 1
+2025-12-20 20:21:14,522 - INFO - Created new game: default_game
+2025-12-20 20:21:14,562 - INFO - Connection closed: ('127.0.0.1', 58821). Active: 0
+2025-12-20 20:21:14,563 - INFO - New connection from ('127.0.0.1', 58822). Active: 1
+2025-12-20 20:21:14,564 - INFO - Connection closed: ('127.0.0.1', 58822). Active: 0
+2025-12-20 20:23:06,974 - INFO - New connection from ('127.0.0.1', 58830). Active: 1
+2025-12-20 20:23:06,975 - INFO - Connection closed: ('127.0.0.1', 58830). Active: 0
+2025-12-20 20:23:06,976 - INFO - New connection from ('127.0.0.1', 58831). Active: 1
+2025-12-20 20:23:06,977 - INFO - Connection closed: ('127.0.0.1', 58831). Active: 0
+2025-12-20 20:23:13,994 - INFO - New connection from ('127.0.0.1', 58834). Active: 1
+2025-12-20 20:23:13,994 - INFO - Connection closed: ('127.0.0.1', 58834). Active: 0
+2025-12-20 20:23:14,013 - INFO - New connection from ('127.0.0.1', 58835). Active: 1
+2025-12-20 20:23:14,013 - INFO - Connection closed: ('127.0.0.1', 58835). Active: 0
+2025-12-20 20:23:14,014 - INFO - New connection from ('127.0.0.1', 58836). Active: 1
+2025-12-20 20:23:14,014 - INFO - Connection closed: ('127.0.0.1', 58836). Active: 0
+2025-12-20 20:23:22,967 - INFO - New connection from ('127.0.0.1', 58839). Active: 1
+2025-12-20 20:23:22,968 - INFO - Connection closed: ('127.0.0.1', 58839). Active: 0
+2025-12-20 20:23:22,969 - INFO - New connection from ('127.0.0.1', 58840). Active: 1
+2025-12-20 20:23:22,969 - INFO - Connection closed: ('127.0.0.1', 58840). Active: 0
+2025-12-20 20:23:22,970 - INFO - New connection from ('127.0.0.1', 58841). Active: 1
+2025-12-20 20:23:22,970 - INFO - Connection closed: ('127.0.0.1', 58841). Active: 0
+2025-12-20 20:23:29,510 - INFO - New connection from ('127.0.0.1', 58843). Active: 1
+2025-12-20 20:23:29,511 - INFO - Connection closed: ('127.0.0.1', 58843). Active: 0
+2025-12-20 20:23:29,512 - INFO - New connection from ('127.0.0.1', 58844). Active: 1
+2025-12-20 20:23:29,512 - INFO - Connection closed: ('127.0.0.1', 58844). Active: 0
+2025-12-20 20:23:29,513 - INFO - New connection from ('127.0.0.1', 58845). Active: 1
+2025-12-20 20:23:29,514 - INFO - Connection closed: ('127.0.0.1', 58845). Active: 0
+2025-12-20 20:23:41,431 - INFO - New connection from ('127.0.0.1', 58849). Active: 1
+2025-12-20 20:23:41,432 - INFO - Connection closed: ('127.0.0.1', 58849). Active: 0
+2025-12-20 20:23:41,433 - INFO - New connection from ('127.0.0.1', 58850). Active: 1
+2025-12-20 20:23:41,433 - INFO - Connection closed: ('127.0.0.1', 58850). Active: 0
+2025-12-20 20:23:41,434 - INFO - New connection from ('127.0.0.1', 58851). Active: 1
+2025-12-20 20:23:41,435 - INFO - Connection closed: ('127.0.0.1', 58851). Active: 0
+2025-12-20 20:24:26,892 - INFO - New connection from ('127.0.0.1', 58856). Active: 1
+2025-12-20 20:24:26,893 - INFO - Connection closed: ('127.0.0.1', 58856). Active: 0
+2025-12-20 20:24:26,894 - INFO - New connection from ('127.0.0.1', 58857). Active: 1
+2025-12-20 20:24:26,894 - INFO - Connection closed: ('127.0.0.1', 58857). Active: 0
+2025-12-20 20:24:26,895 - INFO - New connection from ('127.0.0.1', 58858). Active: 1
+2025-12-20 20:24:26,896 - INFO - Connection closed: ('127.0.0.1', 58858). Active: 0
+2025-12-20 20:26:02,913 - INFO - New connection from ('127.0.0.1', 58877). Active: 1
+2025-12-20 20:26:02,914 - INFO - Connection closed: ('127.0.0.1', 58877). Active: 0
+2025-12-20 20:26:02,915 - INFO - New connection from ('127.0.0.1', 58879). Active: 1
+2025-12-20 20:26:02,916 - INFO - Connection closed: ('127.0.0.1', 58879). Active: 0
+2025-12-20 20:26:02,917 - INFO - New connection from ('127.0.0.1', 58880). Active: 1
+2025-12-20 20:26:02,918 - INFO - Connection closed: ('127.0.0.1', 58880). Active: 0
+2025-12-20 20:26:18,848 - INFO - New connection from ('127.0.0.1', 58883). Active: 1
+2025-12-20 20:26:18,849 - INFO - Connection closed: ('127.0.0.1', 58883). Active: 0
+2025-12-20 20:26:18,849 - INFO - New connection from ('127.0.0.1', 58884). Active: 1
+2025-12-20 20:26:18,850 - INFO - Connection closed: ('127.0.0.1', 58884). Active: 0
+2025-12-20 20:26:18,850 - INFO - New connection from ('127.0.0.1', 58885). Active: 1
+2025-12-20 20:26:18,851 - INFO - Connection closed: ('127.0.0.1', 58885). Active: 0
+2025-12-20 20:27:16,347 - INFO - New connection from ('127.0.0.1', 58908). Active: 1
+2025-12-20 20:27:16,348 - INFO - Connection closed: ('127.0.0.1', 58908). Active: 0
+2025-12-20 20:27:16,349 - INFO - New connection from ('127.0.0.1', 58909). Active: 1
+2025-12-20 20:27:16,349 - INFO - Connection closed: ('127.0.0.1', 58909). Active: 0
+2025-12-20 20:27:16,349 - INFO - New connection from ('127.0.0.1', 58910). Active: 1
+2025-12-20 20:27:16,350 - INFO - Connection closed: ('127.0.0.1', 58910). Active: 0
+2025-12-20 20:28:24,742 - INFO - New connection from ('127.0.0.1', 58928). Active: 1
+2025-12-20 20:28:24,743 - INFO - Connection closed: ('127.0.0.1', 58928). Active: 0
+2025-12-20 20:28:24,744 - INFO - New connection from ('127.0.0.1', 58929). Active: 1
+2025-12-20 20:28:24,744 - INFO - Connection closed: ('127.0.0.1', 58929). Active: 0
+2025-12-20 20:28:24,745 - INFO - New connection from ('127.0.0.1', 58930). Active: 1
+2025-12-20 20:28:24,745 - INFO - Connection closed: ('127.0.0.1', 58930). Active: 0
+2025-12-20 20:29:15,126 - INFO - New connection from ('127.0.0.1', 58933). Active: 1
+2025-12-20 20:29:15,128 - INFO - Connection closed: ('127.0.0.1', 58933). Active: 0
+2025-12-20 20:29:15,128 - INFO - New connection from ('127.0.0.1', 58934). Active: 1
+2025-12-20 20:29:15,129 - INFO - Connection closed: ('127.0.0.1', 58934). Active: 0
+2025-12-20 20:29:15,130 - INFO - New connection from ('127.0.0.1', 58935). Active: 1
+2025-12-20 20:29:15,131 - INFO - Connection closed: ('127.0.0.1', 58935). Active: 0
+2025-12-20 20:34:01,545 - INFO - New connection from ('127.0.0.1', 58979). Active: 1
+2025-12-20 20:34:01,546 - INFO - Connection closed: ('127.0.0.1', 58979). Active: 0
+2025-12-20 20:34:01,547 - INFO - New connection from ('127.0.0.1', 58980). Active: 1
+2025-12-20 20:34:01,548 - INFO - Connection closed: ('127.0.0.1', 58980). Active: 0
+2025-12-20 20:34:01,548 - INFO - New connection from ('127.0.0.1', 58981). Active: 1
+2025-12-20 20:34:01,549 - INFO - Connection closed: ('127.0.0.1', 58981). Active: 0
+2025-12-20 20:35:04,151 - INFO - New connection from ('127.0.0.1', 58987). Active: 1
+2025-12-20 20:35:04,152 - INFO - Connection closed: ('127.0.0.1', 58987). Active: 0
+2025-12-20 20:35:04,153 - INFO - New connection from ('127.0.0.1', 58988). Active: 1
+2025-12-20 20:35:04,153 - INFO - Connection closed: ('127.0.0.1', 58988). Active: 0
+2025-12-20 20:35:04,154 - INFO - New connection from ('127.0.0.1', 58990). Active: 1
+2025-12-20 20:35:04,155 - INFO - Connection closed: ('127.0.0.1', 58990). Active: 0
+2025-12-20 20:40:04,521 - INFO - New connection from ('127.0.0.1', 59005). Active: 1
+2025-12-20 20:40:04,522 - INFO - Connection closed: ('127.0.0.1', 59005). Active: 0
+2025-12-20 20:40:04,523 - INFO - New connection from ('127.0.0.1', 59006). Active: 1
+2025-12-20 20:40:04,524 - INFO - Connection closed: ('127.0.0.1', 59006). Active: 0
+2025-12-20 20:40:04,524 - INFO - New connection from ('127.0.0.1', 59007). Active: 1
+2025-12-20 20:40:04,525 - INFO - Connection closed: ('127.0.0.1', 59007). Active: 0
+2025-12-20 20:41:09,657 - INFO - New connection from ('127.0.0.1', 59010). Active: 1
+2025-12-20 20:41:09,658 - INFO - Connection closed: ('127.0.0.1', 59010). Active: 0
+2025-12-20 20:41:09,659 - INFO - New connection from ('127.0.0.1', 59011). Active: 1
+2025-12-20 20:41:09,660 - INFO - Connection closed: ('127.0.0.1', 59011). Active: 0
+2025-12-20 20:41:09,660 - INFO - New connection from ('127.0.0.1', 59012). Active: 1
+2025-12-20 20:41:09,661 - INFO - Connection closed: ('127.0.0.1', 59012). Active: 0
+2025-12-20 20:41:50,881 - INFO - New connection from ('127.0.0.1', 59017). Active: 1
+2025-12-20 20:41:50,882 - INFO - Connection closed: ('127.0.0.1', 59017). Active: 0
+2025-12-20 20:41:50,882 - INFO - New connection from ('127.0.0.1', 59018). Active: 1
+2025-12-20 20:41:50,883 - INFO - Connection closed: ('127.0.0.1', 59018). Active: 0
+2025-12-20 20:41:50,883 - INFO - New connection from ('127.0.0.1', 59019). Active: 1
+2025-12-20 20:41:50,884 - INFO - Connection closed: ('127.0.0.1', 59019). Active: 0
+2025-12-20 20:43:13,804 - INFO - New connection from ('127.0.0.1', 59064). Active: 1
+2025-12-20 20:43:13,805 - INFO - Connection closed: ('127.0.0.1', 59064). Active: 0
+2025-12-20 20:43:13,806 - INFO - New connection from ('127.0.0.1', 59065). Active: 1
+2025-12-20 20:43:13,807 - INFO - Connection closed: ('127.0.0.1', 59065). Active: 0
+2025-12-20 20:43:13,807 - INFO - New connection from ('127.0.0.1', 59066). Active: 1
+2025-12-20 20:43:13,808 - INFO - Connection closed: ('127.0.0.1', 59066). Active: 0
+2025-12-20 20:43:52,128 - INFO - New connection from ('127.0.0.1', 59088). Active: 1
+2025-12-20 20:43:52,130 - INFO - Connection closed: ('127.0.0.1', 59088). Active: 0
+2025-12-20 20:43:52,130 - INFO - New connection from ('127.0.0.1', 59089). Active: 1
+2025-12-20 20:43:52,131 - INFO - Connection closed: ('127.0.0.1', 59089). Active: 0
+2025-12-20 20:43:52,132 - INFO - New connection from ('127.0.0.1', 59090). Active: 1
+2025-12-20 20:43:52,133 - INFO - Connection closed: ('127.0.0.1', 59090). Active: 0
+2025-12-20 20:44:05,662 - INFO - New connection from ('127.0.0.1', 59099). Active: 1
+2025-12-20 20:44:05,663 - INFO - Connection closed: ('127.0.0.1', 59099). Active: 0
+2025-12-20 20:44:05,663 - INFO - New connection from ('127.0.0.1', 59101). Active: 1
+2025-12-20 20:44:05,664 - INFO - Connection closed: ('127.0.0.1', 59101). Active: 0
+2025-12-20 20:44:05,664 - INFO - New connection from ('127.0.0.1', 59102). Active: 1
+2025-12-20 20:44:05,665 - INFO - Connection closed: ('127.0.0.1', 59102). Active: 0
+2025-12-20 20:44:09,736 - INFO - New connection from ('127.0.0.1', 59103). Active: 1
+2025-12-20 20:44:09,737 - INFO - Connection closed: ('127.0.0.1', 59103). Active: 0
+2025-12-20 20:44:09,737 - INFO - New connection from ('127.0.0.1', 59104). Active: 1
+2025-12-20 20:44:09,738 - INFO - Connection closed: ('127.0.0.1', 59104). Active: 0
+2025-12-20 20:44:09,739 - INFO - New connection from ('127.0.0.1', 59105). Active: 1
+2025-12-20 20:44:09,739 - INFO - Connection closed: ('127.0.0.1', 59105). Active: 0
+2025-12-20 20:45:00,385 - INFO - New connection from ('127.0.0.1', 59131). Active: 1
+2025-12-20 20:45:00,386 - INFO - Connection closed: ('127.0.0.1', 59131). Active: 0
+2025-12-20 20:45:00,387 - INFO - New connection from ('127.0.0.1', 59132). Active: 1
+2025-12-20 20:45:00,387 - INFO - Connection closed: ('127.0.0.1', 59132). Active: 0
+2025-12-20 20:45:00,388 - INFO - New connection from ('127.0.0.1', 59133). Active: 1
+2025-12-20 20:45:00,389 - INFO - Connection closed: ('127.0.0.1', 59133). Active: 0
+2025-12-20 20:45:28,464 - INFO - New connection from ('127.0.0.1', 59135). Active: 1
+2025-12-20 20:45:28,465 - INFO - Connection closed: ('127.0.0.1', 59135). Active: 0
+2025-12-20 20:45:28,465 - INFO - New connection from ('127.0.0.1', 59136). Active: 1
+2025-12-20 20:45:28,466 - INFO - Connection closed: ('127.0.0.1', 59136). Active: 0
+2025-12-20 20:45:28,467 - INFO - New connection from ('127.0.0.1', 59137). Active: 1
+2025-12-20 20:45:28,467 - INFO - Connection closed: ('127.0.0.1', 59137). Active: 0
+2025-12-20 20:46:24,031 - INFO - New connection from ('127.0.0.1', 59143). Active: 1
+2025-12-20 20:46:24,033 - INFO - Connection closed: ('127.0.0.1', 59143). Active: 0
+2025-12-20 20:46:24,033 - INFO - New connection from ('127.0.0.1', 59144). Active: 1
+2025-12-20 20:46:24,034 - INFO - Connection closed: ('127.0.0.1', 59144). Active: 0
+2025-12-20 20:46:24,034 - INFO - New connection from ('127.0.0.1', 59145). Active: 1
+2025-12-20 20:46:24,035 - INFO - Connection closed: ('127.0.0.1', 59145). Active: 0
+2025-12-20 20:47:05,504 - INFO - New connection from ('127.0.0.1', 59147). Active: 1
+2025-12-20 20:47:05,505 - INFO - Connection closed: ('127.0.0.1', 59147). Active: 0
+2025-12-20 20:47:05,505 - INFO - New connection from ('127.0.0.1', 59148). Active: 1
+2025-12-20 20:47:05,506 - INFO - Connection closed: ('127.0.0.1', 59148). Active: 0
+2025-12-20 20:47:05,507 - INFO - New connection from ('127.0.0.1', 59149). Active: 1
+2025-12-20 20:47:05,507 - INFO - Connection closed: ('127.0.0.1', 59149). Active: 0
+2025-12-20 20:56:13,389 - INFO - New connection from ('127.0.0.1', 59229). Active: 1
+2025-12-20 20:56:13,390 - INFO - Connection closed: ('127.0.0.1', 59229). Active: 0
+2025-12-20 20:56:13,390 - INFO - New connection from ('127.0.0.1', 59230). Active: 1
+2025-12-20 20:56:13,391 - INFO - Connection closed: ('127.0.0.1', 59230). Active: 0
+2025-12-20 20:56:13,391 - INFO - New connection from ('127.0.0.1', 59231). Active: 1
+2025-12-20 20:56:13,392 - INFO - Connection closed: ('127.0.0.1', 59231). Active: 0
+2025-12-20 20:56:42,219 - INFO - New connection from ('127.0.0.1', 59234). Active: 1
+2025-12-20 20:56:42,220 - INFO - Connection closed: ('127.0.0.1', 59234). Active: 0
+2025-12-20 20:56:42,220 - INFO - New connection from ('127.0.0.1', 59235). Active: 1
+2025-12-20 20:56:42,221 - INFO - Connection closed: ('127.0.0.1', 59235). Active: 0
+2025-12-20 20:56:42,221 - INFO - New connection from ('127.0.0.1', 59236). Active: 1
+2025-12-20 20:56:42,222 - INFO - Connection closed: ('127.0.0.1', 59236). Active: 0
+2025-12-20 20:59:16,863 - INFO - New connection from ('127.0.0.1', 59251). Active: 1
+2025-12-20 20:59:16,864 - INFO - Connection closed: ('127.0.0.1', 59251). Active: 0
+2025-12-20 20:59:16,865 - INFO - New connection from ('127.0.0.1', 59252). Active: 1
+2025-12-20 20:59:16,865 - INFO - Connection closed: ('127.0.0.1', 59252). Active: 0
+2025-12-20 20:59:16,866 - INFO - New connection from ('127.0.0.1', 59253). Active: 1
+2025-12-20 20:59:16,866 - INFO - Connection closed: ('127.0.0.1', 59253). Active: 0
+2025-12-20 20:59:45,303 - INFO - New connection from ('127.0.0.1', 59256). Active: 1
+2025-12-20 20:59:45,304 - INFO - Connection closed: ('127.0.0.1', 59256). Active: 0
+2025-12-20 20:59:45,305 - INFO - New connection from ('127.0.0.1', 59257). Active: 1
+2025-12-20 20:59:45,305 - INFO - Connection closed: ('127.0.0.1', 59257). Active: 0
+2025-12-20 20:59:45,306 - INFO - New connection from ('127.0.0.1', 59258). Active: 1
+2025-12-20 20:59:45,306 - INFO - Connection closed: ('127.0.0.1', 59258). Active: 0
+2025-12-20 21:02:48,130 - INFO - New connection from ('127.0.0.1', 59269). Active: 1
+2025-12-20 21:02:48,131 - INFO - Connection closed: ('127.0.0.1', 59269). Active: 0
+2025-12-20 21:02:48,132 - INFO - New connection from ('127.0.0.1', 59270). Active: 1
+2025-12-20 21:02:48,133 - INFO - Connection closed: ('127.0.0.1', 59270). Active: 0
+2025-12-20 21:02:48,133 - INFO - New connection from ('127.0.0.1', 59271). Active: 1
+2025-12-20 21:02:48,134 - INFO - Connection closed: ('127.0.0.1', 59271). Active: 0
+2025-12-20 21:07:54,247 - INFO - New connection from ('127.0.0.1', 59295). Active: 1
+2025-12-20 21:07:54,248 - INFO - Connection closed: ('127.0.0.1', 59295). Active: 0
+2025-12-20 21:07:54,248 - INFO - New connection from ('127.0.0.1', 59296). Active: 1
+2025-12-20 21:07:54,248 - INFO - Connection closed: ('127.0.0.1', 59296). Active: 0
+2025-12-20 21:07:54,249 - INFO - New connection from ('127.0.0.1', 59297). Active: 1
+2025-12-20 21:07:54,249 - INFO - Connection closed: ('127.0.0.1', 59297). Active: 0
+2025-12-20 21:08:53,794 - INFO - New connection from ('127.0.0.1', 59300). Active: 1
+2025-12-20 21:08:53,796 - INFO - Connection closed: ('127.0.0.1', 59300). Active: 0
+2025-12-20 21:08:53,796 - INFO - New connection from ('127.0.0.1', 59301). Active: 1
+2025-12-20 21:08:53,797 - INFO - Connection closed: ('127.0.0.1', 59301). Active: 0
+2025-12-20 21:08:53,798 - INFO - New connection from ('127.0.0.1', 59302). Active: 1
+2025-12-20 21:08:53,799 - INFO - Connection closed: ('127.0.0.1', 59302). Active: 0
+2025-12-20 21:10:31,092 - INFO - New connection from ('127.0.0.1', 59309). Active: 1
+2025-12-20 21:10:31,094 - INFO - Connection closed: ('127.0.0.1', 59309). Active: 0
+2025-12-20 21:10:31,095 - INFO - New connection from ('127.0.0.1', 59311). Active: 1
+2025-12-20 21:10:31,095 - INFO - Connection closed: ('127.0.0.1', 59311). Active: 0
+2025-12-20 21:10:31,096 - INFO - New connection from ('127.0.0.1', 59312). Active: 1
+2025-12-20 21:10:31,097 - INFO - Connection closed: ('127.0.0.1', 59312). Active: 0
+2025-12-20 21:12:56,317 - INFO - New connection from ('127.0.0.1', 59322). Active: 1
+2025-12-20 21:12:56,318 - INFO - Connection closed: ('127.0.0.1', 59322). Active: 0
+2025-12-20 21:12:56,318 - INFO - New connection from ('127.0.0.1', 59323). Active: 1
+2025-12-20 21:12:56,319 - INFO - Connection closed: ('127.0.0.1', 59323). Active: 0
+2025-12-20 21:12:56,320 - INFO - New connection from ('127.0.0.1', 59324). Active: 1
+2025-12-20 21:12:56,321 - INFO - Connection closed: ('127.0.0.1', 59324). Active: 0
+2025-12-20 21:13:50,873 - INFO - New connection from ('127.0.0.1', 58996). Active: 1
+2025-12-20 21:13:50,874 - INFO - Connection closed: ('127.0.0.1', 58996). Active: 0
+2025-12-20 21:13:50,875 - INFO - New connection from ('127.0.0.1', 58997). Active: 1
+2025-12-20 21:13:50,875 - INFO - Connection closed: ('127.0.0.1', 58997). Active: 0
+2025-12-20 21:13:50,876 - INFO - New connection from ('127.0.0.1', 58998). Active: 1
+2025-12-20 21:13:50,877 - INFO - Connection closed: ('127.0.0.1', 58998). Active: 0
+2025-12-20 21:14:04,206 - INFO - New connection from ('127.0.0.1', 59005). Active: 1
+2025-12-20 21:14:04,207 - INFO - Connection closed: ('127.0.0.1', 59005). Active: 0
+2025-12-20 21:14:04,208 - INFO - New connection from ('127.0.0.1', 59006). Active: 1
+2025-12-20 21:14:04,209 - INFO - Connection closed: ('127.0.0.1', 59006). Active: 0
+2025-12-20 21:14:04,209 - INFO - New connection from ('127.0.0.1', 59007). Active: 1
+2025-12-20 21:14:04,210 - INFO - Connection closed: ('127.0.0.1', 59007). Active: 0
+2025-12-20 21:14:32,840 - INFO - New connection from ('127.0.0.1', 50318). Active: 1
+2025-12-20 21:14:32,840 - INFO - Connection closed: ('127.0.0.1', 50318). Active: 0
+2025-12-20 21:14:32,841 - INFO - New connection from ('127.0.0.1', 50319). Active: 1
+2025-12-20 21:14:32,841 - INFO - Connection closed: ('127.0.0.1', 50319). Active: 0
+2025-12-20 21:14:32,842 - INFO - New connection from ('127.0.0.1', 50321). Active: 1
+2025-12-20 21:14:32,843 - INFO - Connection closed: ('127.0.0.1', 50321). Active: 0
+2025-12-20 21:16:17,275 - INFO - New connection from ('127.0.0.1', 50327). Active: 1
+2025-12-20 21:16:17,276 - INFO - Connection closed: ('127.0.0.1', 50327). Active: 0
+2025-12-20 21:16:17,277 - INFO - New connection from ('127.0.0.1', 50328). Active: 1
+2025-12-20 21:16:17,277 - INFO - Connection closed: ('127.0.0.1', 50328). Active: 0
+2025-12-20 21:16:17,278 - INFO - New connection from ('127.0.0.1', 50329). Active: 1
+2025-12-20 21:16:17,279 - INFO - Connection closed: ('127.0.0.1', 50329). Active: 0
+2025-12-20 21:17:12,911 - INFO - New connection from ('127.0.0.1', 50331). Active: 1
+2025-12-20 21:17:12,912 - INFO - Connection closed: ('127.0.0.1', 50331). Active: 0
+2025-12-20 21:17:12,913 - INFO - New connection from ('127.0.0.1', 50332). Active: 1
+2025-12-20 21:17:12,914 - INFO - Connection closed: ('127.0.0.1', 50332). Active: 0
+2025-12-20 21:17:12,915 - INFO - New connection from ('127.0.0.1', 50333). Active: 1
+2025-12-20 21:17:12,915 - INFO - Connection closed: ('127.0.0.1', 50333). Active: 0
+2025-12-20 21:17:23,582 - INFO - New connection from ('127.0.0.1', 50337). Active: 1
+2025-12-20 21:17:23,583 - INFO - Connection closed: ('127.0.0.1', 50337). Active: 0
+2025-12-20 21:17:23,583 - INFO - New connection from ('127.0.0.1', 50338). Active: 1
+2025-12-20 21:17:23,584 - INFO - Connection closed: ('127.0.0.1', 50338). Active: 0
+2025-12-20 21:17:23,585 - INFO - New connection from ('127.0.0.1', 50339). Active: 1
+2025-12-20 21:17:23,585 - INFO - Connection closed: ('127.0.0.1', 50339). Active: 0
+2025-12-20 21:17:42,502 - INFO - New connection from ('127.0.0.1', 50342). Active: 1
+2025-12-20 21:17:42,503 - INFO - Connection closed: ('127.0.0.1', 50342). Active: 0
+2025-12-20 21:17:42,504 - INFO - New connection from ('127.0.0.1', 50343). Active: 1
+2025-12-20 21:17:42,504 - INFO - Connection closed: ('127.0.0.1', 50343). Active: 0
+2025-12-20 21:17:42,505 - INFO - New connection from ('127.0.0.1', 50344). Active: 1
+2025-12-20 21:17:42,506 - INFO - Connection closed: ('127.0.0.1', 50344). Active: 0
+2025-12-20 21:19:24,894 - INFO - New connection from ('127.0.0.1', 62678). Active: 1
+2025-12-20 21:19:24,895 - INFO - Connection closed: ('127.0.0.1', 62678). Active: 0
+2025-12-20 21:19:24,895 - INFO - New connection from ('127.0.0.1', 62679). Active: 1
+2025-12-20 21:19:24,896 - INFO - Connection closed: ('127.0.0.1', 62679). Active: 0
+2025-12-20 21:19:24,897 - INFO - New connection from ('127.0.0.1', 62680). Active: 1
+2025-12-20 21:19:24,897 - INFO - Connection closed: ('127.0.0.1', 62680). Active: 0
+2025-12-20 21:21:40,727 - INFO - New connection from ('127.0.0.1', 50023). Active: 1
+2025-12-20 21:21:40,728 - INFO - Connection closed: ('127.0.0.1', 50023). Active: 0
+2025-12-20 21:21:40,729 - INFO - New connection from ('127.0.0.1', 50024). Active: 1
+2025-12-20 21:21:40,730 - INFO - Connection closed: ('127.0.0.1', 50024). Active: 0
+2025-12-20 21:21:40,731 - INFO - New connection from ('127.0.0.1', 50026). Active: 1
+2025-12-20 21:21:40,731 - INFO - Connection closed: ('127.0.0.1', 50026). Active: 0
+2025-12-20 21:23:45,918 - INFO - New connection from ('127.0.0.1', 55465). Active: 1
+2025-12-20 21:23:45,920 - INFO - Connection closed: ('127.0.0.1', 55465). Active: 0
+2025-12-20 21:23:45,921 - INFO - New connection from ('127.0.0.1', 55466). Active: 1
+2025-12-20 21:23:45,922 - INFO - Connection closed: ('127.0.0.1', 55466). Active: 0
+2025-12-20 21:23:45,922 - INFO - New connection from ('127.0.0.1', 55467). Active: 1
+2025-12-20 21:23:45,923 - INFO - Connection closed: ('127.0.0.1', 55467). Active: 0
+2025-12-20 21:24:23,227 - INFO - New connection from ('127.0.0.1', 63884). Active: 1
+2025-12-20 21:24:23,228 - INFO - Connection closed: ('127.0.0.1', 63884). Active: 0
+2025-12-20 21:24:23,228 - INFO - New connection from ('127.0.0.1', 63885). Active: 1
+2025-12-20 21:24:23,228 - INFO - Connection closed: ('127.0.0.1', 63885). Active: 0
+2025-12-20 21:24:23,229 - INFO - New connection from ('127.0.0.1', 63886). Active: 1
+2025-12-20 21:24:23,229 - INFO - Connection closed: ('127.0.0.1', 63886). Active: 0
+2025-12-20 21:25:54,344 - INFO - New connection from ('127.0.0.1', 64941). Active: 1
+2025-12-20 21:25:54,345 - INFO - Connection closed: ('127.0.0.1', 64941). Active: 0
+2025-12-20 21:25:54,346 - INFO - New connection from ('127.0.0.1', 64942). Active: 1
+2025-12-20 21:25:54,346 - INFO - Connection closed: ('127.0.0.1', 64942). Active: 0
+2025-12-20 21:25:54,347 - INFO - New connection from ('127.0.0.1', 64943). Active: 1
+2025-12-20 21:25:54,348 - INFO - Connection closed: ('127.0.0.1', 64943). Active: 0
+2025-12-20 21:25:55,404 - INFO - New connection from ('127.0.0.1', 64944). Active: 1
+2025-12-20 21:25:55,405 - INFO - Connection closed: ('127.0.0.1', 64944). Active: 0
+2025-12-20 21:25:55,406 - INFO - New connection from ('127.0.0.1', 64945). Active: 1
+2025-12-20 21:25:55,499 - INFO - Connection closed: ('127.0.0.1', 64945). Active: 0
+2025-12-20 21:25:55,499 - INFO - New connection from ('127.0.0.1', 64946). Active: 1
+2025-12-20 21:25:55,500 - INFO - Connection closed: ('127.0.0.1', 64946). Active: 0
+2025-12-20 21:31:20,350 - INFO - New connection from ('127.0.0.1', 65068). Active: 1
+2025-12-20 21:31:20,351 - INFO - Connection closed: ('127.0.0.1', 65068). Active: 0
+2025-12-20 21:31:20,352 - INFO - New connection from ('127.0.0.1', 65069). Active: 1
+2025-12-20 21:31:20,352 - INFO - Connection closed: ('127.0.0.1', 65069). Active: 0
+2025-12-20 21:31:20,353 - INFO - New connection from ('127.0.0.1', 65070). Active: 1
+2025-12-20 21:31:20,353 - INFO - Connection closed: ('127.0.0.1', 65070). Active: 0
+2025-12-20 21:33:19,027 - INFO - New connection from ('127.0.0.1', 65132). Active: 1
+2025-12-20 21:33:19,029 - INFO - Connection closed: ('127.0.0.1', 65132). Active: 0
+2025-12-20 21:33:19,029 - INFO - New connection from ('127.0.0.1', 65133). Active: 1
+2025-12-20 21:33:19,030 - INFO - Connection closed: ('127.0.0.1', 65133). Active: 0
+2025-12-20 21:33:19,031 - INFO - New connection from ('127.0.0.1', 65134). Active: 1
+2025-12-20 21:33:19,032 - INFO - Connection closed: ('127.0.0.1', 65134). Active: 0
+2025-12-20 21:33:44,109 - INFO - New connection from ('127.0.0.1', 65141). Active: 1
+2025-12-20 21:33:44,110 - INFO - Connection closed: ('127.0.0.1', 65141). Active: 0
+2025-12-20 21:33:44,111 - INFO - New connection from ('127.0.0.1', 65142). Active: 1
+2025-12-20 21:33:44,111 - INFO - Connection closed: ('127.0.0.1', 65142). Active: 0
+2025-12-20 21:33:44,112 - INFO - New connection from ('127.0.0.1', 65143). Active: 1
+2025-12-20 21:33:44,113 - INFO - Connection closed: ('127.0.0.1', 65143). Active: 0
+2025-12-20 21:38:43,858 - INFO - New connection from ('127.0.0.1', 65155). Active: 1
+2025-12-20 21:38:43,859 - INFO - Connection closed: ('127.0.0.1', 65155). Active: 0
+2025-12-20 21:38:43,860 - INFO - New connection from ('127.0.0.1', 65157). Active: 1
+2025-12-20 21:38:43,861 - INFO - Connection closed: ('127.0.0.1', 65157). Active: 0
+2025-12-20 21:38:43,862 - INFO - New connection from ('127.0.0.1', 65158). Active: 1
+2025-12-20 21:38:43,863 - INFO - Connection closed: ('127.0.0.1', 65158). Active: 0
+2025-12-20 21:51:20,264 - INFO - New connection from ('127.0.0.1', 65257). Active: 1
+2025-12-20 21:51:20,265 - INFO - Connection closed: ('127.0.0.1', 65257). Active: 0
+2025-12-20 21:51:20,266 - INFO - New connection from ('127.0.0.1', 65258). Active: 1
+2025-12-20 21:51:20,266 - INFO - Connection closed: ('127.0.0.1', 65258). Active: 0
+2025-12-20 21:51:20,267 - INFO - New connection from ('127.0.0.1', 65259). Active: 1
+2025-12-20 21:51:20,267 - INFO - Connection closed: ('127.0.0.1', 65259). Active: 0
+2025-12-20 21:51:25,546 - INFO - New connection from ('127.0.0.1', 65262). Active: 1
+2025-12-20 21:51:25,546 - INFO - Connection closed: ('127.0.0.1', 65262). Active: 0
+2025-12-20 21:51:25,547 - INFO - New connection from ('127.0.0.1', 65263). Active: 1
+2025-12-20 21:51:25,548 - INFO - Connection closed: ('127.0.0.1', 65263). Active: 0
+2025-12-20 21:51:25,549 - INFO - New connection from ('127.0.0.1', 65264). Active: 1
+2025-12-20 21:51:25,550 - INFO - Connection closed: ('127.0.0.1', 65264). Active: 0
+2025-12-20 21:52:39,844 - INFO - New connection from ('127.0.0.1', 65296). Active: 1
+2025-12-20 21:52:39,845 - INFO - Connection closed: ('127.0.0.1', 65296). Active: 0
+2025-12-20 21:52:39,846 - INFO - New connection from ('127.0.0.1', 65297). Active: 1
+2025-12-20 21:52:39,846 - INFO - Connection closed: ('127.0.0.1', 65297). Active: 0
+2025-12-20 21:52:39,847 - INFO - New connection from ('127.0.0.1', 65298). Active: 1
+2025-12-20 21:52:39,848 - INFO - Connection closed: ('127.0.0.1', 65298). Active: 0
+2025-12-20 21:52:49,951 - INFO - New connection from ('127.0.0.1', 65300). Active: 1
+2025-12-20 21:52:49,952 - INFO - Connection closed: ('127.0.0.1', 65300). Active: 0
+2025-12-20 21:52:49,952 - INFO - New connection from ('127.0.0.1', 65301). Active: 1
+2025-12-20 21:52:49,953 - INFO - Connection closed: ('127.0.0.1', 65301). Active: 0
+2025-12-20 21:52:49,953 - INFO - New connection from ('127.0.0.1', 65302). Active: 1
+2025-12-20 21:52:49,954 - INFO - Connection closed: ('127.0.0.1', 65302). Active: 0
+2025-12-20 21:53:02,670 - INFO - New connection from ('127.0.0.1', 65304). Active: 1
+2025-12-20 21:53:02,672 - INFO - Connection closed: ('127.0.0.1', 65304). Active: 0
+2025-12-20 21:53:02,672 - INFO - New connection from ('127.0.0.1', 65305). Active: 1
+2025-12-20 21:53:02,673 - INFO - Connection closed: ('127.0.0.1', 65305). Active: 0
+2025-12-20 21:53:02,674 - INFO - New connection from ('127.0.0.1', 65306). Active: 1
+2025-12-20 21:53:02,674 - INFO - Connection closed: ('127.0.0.1', 65306). Active: 0
+2025-12-20 21:53:45,365 - INFO - New connection from ('127.0.0.1', 65312). Active: 1
+2025-12-20 21:53:45,367 - INFO - Connection closed: ('127.0.0.1', 65312). Active: 0
+2025-12-20 21:53:45,368 - INFO - New connection from ('127.0.0.1', 65313). Active: 1
+2025-12-20 21:53:45,368 - INFO - Connection closed: ('127.0.0.1', 65313). Active: 0
+2025-12-20 21:53:45,369 - INFO - New connection from ('127.0.0.1', 65314). Active: 1
+2025-12-20 21:53:45,369 - INFO - Connection closed: ('127.0.0.1', 65314). Active: 0
+2025-12-20 21:55:22,493 - INFO - New connection from ('127.0.0.1', 65354). Active: 1
+2025-12-20 21:55:22,494 - INFO - Connection closed: ('127.0.0.1', 65354). Active: 0
+2025-12-20 21:55:22,494 - INFO - New connection from ('127.0.0.1', 65355). Active: 1
+2025-12-20 21:55:22,495 - INFO - Connection closed: ('127.0.0.1', 65355). Active: 0
+2025-12-20 21:55:22,495 - INFO - New connection from ('127.0.0.1', 65356). Active: 1
+2025-12-20 21:55:22,495 - INFO - Connection closed: ('127.0.0.1', 65356). Active: 0
+2025-12-20 21:56:07,808 - INFO - New connection from ('127.0.0.1', 65381). Active: 1
+2025-12-20 21:56:07,809 - INFO - Connection closed: ('127.0.0.1', 65381). Active: 0
+2025-12-20 21:56:07,809 - INFO - New connection from ('127.0.0.1', 65382). Active: 1
+2025-12-20 21:56:07,810 - INFO - Connection closed: ('127.0.0.1', 65382). Active: 0
+2025-12-20 21:56:07,810 - INFO - New connection from ('127.0.0.1', 65383). Active: 1
+2025-12-20 21:56:07,811 - INFO - Connection closed: ('127.0.0.1', 65383). Active: 0
+2025-12-20 21:56:22,613 - INFO - New connection from ('127.0.0.1', 65392). Active: 1
+2025-12-20 21:56:22,614 - INFO - Connection closed: ('127.0.0.1', 65392). Active: 0
+2025-12-20 21:56:22,614 - INFO - New connection from ('127.0.0.1', 65393). Active: 1
+2025-12-20 21:56:22,615 - INFO - Connection closed: ('127.0.0.1', 65393). Active: 0
+2025-12-20 21:56:22,615 - INFO - New connection from ('127.0.0.1', 65394). Active: 1
+2025-12-20 21:56:22,616 - INFO - Connection closed: ('127.0.0.1', 65394). Active: 0
+2025-12-20 21:57:29,897 - INFO - New connection from ('127.0.0.1', 65411). Active: 1
+2025-12-20 21:57:29,899 - INFO - Connection closed: ('127.0.0.1', 65411). Active: 0
+2025-12-20 21:57:29,899 - INFO - New connection from ('127.0.0.1', 65412). Active: 1
+2025-12-20 21:57:29,900 - INFO - Connection closed: ('127.0.0.1', 65412). Active: 0
+2025-12-20 21:57:29,901 - INFO - New connection from ('127.0.0.1', 65413). Active: 1
+2025-12-20 21:57:29,902 - INFO - Connection closed: ('127.0.0.1', 65413). Active: 0
+2025-12-20 21:57:43,043 - INFO - New connection from ('127.0.0.1', 65419). Active: 1
+2025-12-20 21:57:43,044 - INFO - Connection closed: ('127.0.0.1', 65419). Active: 0
+2025-12-20 21:57:43,044 - INFO - New connection from ('127.0.0.1', 65420). Active: 1
+2025-12-20 21:57:43,045 - INFO - Connection closed: ('127.0.0.1', 65420). Active: 0
+2025-12-20 21:57:43,045 - INFO - New connection from ('127.0.0.1', 65421). Active: 1
+2025-12-20 21:57:43,046 - INFO - Connection closed: ('127.0.0.1', 65421). Active: 0
+2025-12-20 22:00:39,146 - INFO - New connection from ('127.0.0.1', 65457). Active: 1
+2025-12-20 22:00:39,147 - INFO - Connection closed: ('127.0.0.1', 65457). Active: 0
+2025-12-20 22:00:39,148 - INFO - New connection from ('127.0.0.1', 65458). Active: 1
+2025-12-20 22:00:39,148 - INFO - Connection closed: ('127.0.0.1', 65458). Active: 0
+2025-12-20 22:00:39,149 - INFO - New connection from ('127.0.0.1', 65459). Active: 1
+2025-12-20 22:00:39,149 - INFO - Connection closed: ('127.0.0.1', 65459). Active: 0
+2025-12-20 22:01:33,129 - INFO - New connection from ('127.0.0.1', 65486). Active: 1
+2025-12-20 22:01:33,130 - INFO - Connection closed: ('127.0.0.1', 65486). Active: 0
+2025-12-20 22:01:33,130 - INFO - New connection from ('127.0.0.1', 65487). Active: 1
+2025-12-20 22:01:33,131 - INFO - Connection closed: ('127.0.0.1', 65487). Active: 0
+2025-12-20 22:01:33,131 - INFO - New connection from ('127.0.0.1', 65488). Active: 1
+2025-12-20 22:01:33,132 - INFO - Connection closed: ('127.0.0.1', 65488). Active: 0
+2025-12-20 22:02:01,105 - INFO - New connection from ('127.0.0.1', 65503). Active: 1
+2025-12-20 22:02:01,106 - INFO - Connection closed: ('127.0.0.1', 65503). Active: 0
+2025-12-20 22:02:01,106 - INFO - New connection from ('127.0.0.1', 65504). Active: 1
+2025-12-20 22:02:01,107 - INFO - Connection closed: ('127.0.0.1', 65504). Active: 0
+2025-12-20 22:02:01,107 - INFO - New connection from ('127.0.0.1', 65505). Active: 1
+2025-12-20 22:02:01,108 - INFO - Connection closed: ('127.0.0.1', 65505). Active: 0
+2025-12-20 22:02:19,696 - INFO - New connection from ('127.0.0.1', 65509). Active: 1
+2025-12-20 22:02:19,697 - INFO - Connection closed: ('127.0.0.1', 65509). Active: 0
+2025-12-20 22:02:19,697 - INFO - New connection from ('127.0.0.1', 65510). Active: 1
+2025-12-20 22:02:19,698 - INFO - Connection closed: ('127.0.0.1', 65510). Active: 0
+2025-12-20 22:02:19,698 - INFO - New connection from ('127.0.0.1', 65511). Active: 1
+2025-12-20 22:02:19,699 - INFO - Connection closed: ('127.0.0.1', 65511). Active: 0
+2025-12-20 22:02:48,032 - INFO - New connection from ('127.0.0.1', 65516). Active: 1
+2025-12-20 22:02:48,033 - INFO - Connection closed: ('127.0.0.1', 65516). Active: 0
+2025-12-20 22:02:48,033 - INFO - New connection from ('127.0.0.1', 65517). Active: 1
+2025-12-20 22:02:48,034 - INFO - Connection closed: ('127.0.0.1', 65517). Active: 0
+2025-12-20 22:02:48,034 - INFO - New connection from ('127.0.0.1', 65518). Active: 1
+2025-12-20 22:02:48,035 - INFO - Connection closed: ('127.0.0.1', 65518). Active: 0
+2025-12-20 22:02:58,759 - INFO - New connection from ('127.0.0.1', 65520). Active: 1
+2025-12-20 22:02:58,760 - INFO - Connection closed: ('127.0.0.1', 65520). Active: 0
+2025-12-20 22:02:58,760 - INFO - New connection from ('127.0.0.1', 65521). Active: 1
+2025-12-20 22:02:58,761 - INFO - Connection closed: ('127.0.0.1', 65521). Active: 0
+2025-12-20 22:02:58,762 - INFO - New connection from ('127.0.0.1', 65522). Active: 1
+2025-12-20 22:02:58,763 - INFO - Connection closed: ('127.0.0.1', 65522). Active: 0
+2025-12-20 22:08:22,298 - INFO - New connection from ('127.0.0.1', 65534). Active: 1
+2025-12-20 22:08:22,300 - INFO - Connection closed: ('127.0.0.1', 65534). Active: 0
+2025-12-20 22:08:22,301 - INFO - New connection from ('127.0.0.1', 49152). Active: 1
+2025-12-20 22:08:22,301 - INFO - Connection closed: ('127.0.0.1', 49152). Active: 0
+2025-12-20 22:08:22,302 - INFO - New connection from ('127.0.0.1', 49153). Active: 1
+2025-12-20 22:08:22,303 - INFO - Connection closed: ('127.0.0.1', 49153). Active: 0
+2025-12-20 22:08:24,648 - INFO - New connection from ('127.0.0.1', 49154). Active: 1
+2025-12-20 22:08:24,649 - INFO - Connection closed: ('127.0.0.1', 49154). Active: 0
+2025-12-20 22:08:24,649 - INFO - New connection from ('127.0.0.1', 49155). Active: 1
+2025-12-20 22:08:24,650 - INFO - Connection closed: ('127.0.0.1', 49155). Active: 0
+2025-12-20 22:08:24,650 - INFO - New connection from ('127.0.0.1', 49156). Active: 1
+2025-12-20 22:08:24,651 - INFO - Connection closed: ('127.0.0.1', 49156). Active: 0
+2025-12-20 22:08:25,742 - INFO - New connection from ('127.0.0.1', 49157). Active: 1
+2025-12-20 22:08:25,743 - INFO - Connection closed: ('127.0.0.1', 49157). Active: 0
+2025-12-20 22:08:25,743 - INFO - New connection from ('127.0.0.1', 49158). Active: 1
+2025-12-20 22:08:25,744 - INFO - Connection closed: ('127.0.0.1', 49158). Active: 0
+2025-12-20 22:08:25,745 - INFO - New connection from ('127.0.0.1', 49159). Active: 1
+2025-12-20 22:08:25,745 - INFO - Connection closed: ('127.0.0.1', 49159). Active: 0
+2025-12-20 22:08:26,398 - INFO - New connection from ('127.0.0.1', 49160). Active: 1
+2025-12-20 22:08:26,399 - INFO - Connection closed: ('127.0.0.1', 49160). Active: 0
+2025-12-20 22:08:26,399 - INFO - New connection from ('127.0.0.1', 49161). Active: 1
+2025-12-20 22:08:26,400 - INFO - Connection closed: ('127.0.0.1', 49161). Active: 0
+2025-12-20 22:08:26,400 - INFO - New connection from ('127.0.0.1', 49162). Active: 1
+2025-12-20 22:08:26,401 - INFO - Connection closed: ('127.0.0.1', 49162). Active: 0
+2025-12-20 22:08:26,959 - INFO - New connection from ('127.0.0.1', 49163). Active: 1
+2025-12-20 22:08:26,960 - INFO - Connection closed: ('127.0.0.1', 49163). Active: 0
+2025-12-20 22:08:26,960 - INFO - New connection from ('127.0.0.1', 49164). Active: 1
+2025-12-20 22:08:26,961 - INFO - Connection closed: ('127.0.0.1', 49164). Active: 0
+2025-12-20 22:08:26,962 - INFO - New connection from ('127.0.0.1', 49165). Active: 1
+2025-12-20 22:08:26,963 - INFO - Connection closed: ('127.0.0.1', 49165). Active: 0
+2025-12-20 22:08:27,325 - INFO - New connection from ('127.0.0.1', 49167). Active: 1
+2025-12-20 22:08:27,326 - INFO - Connection closed: ('127.0.0.1', 49167). Active: 0
+2025-12-20 22:08:27,326 - INFO - New connection from ('127.0.0.1', 49168). Active: 1
+2025-12-20 22:08:27,326 - INFO - Connection closed: ('127.0.0.1', 49168). Active: 0
+2025-12-20 22:08:27,327 - INFO - New connection from ('127.0.0.1', 49169). Active: 1
+2025-12-20 22:08:27,327 - INFO - Connection closed: ('127.0.0.1', 49169). Active: 0
+2025-12-20 22:08:27,725 - INFO - New connection from ('127.0.0.1', 49171). Active: 1
+2025-12-20 22:08:27,725 - INFO - Connection closed: ('127.0.0.1', 49171). Active: 0
+2025-12-20 22:08:27,726 - INFO - New connection from ('127.0.0.1', 49172). Active: 1
+2025-12-20 22:08:27,726 - INFO - Connection closed: ('127.0.0.1', 49172). Active: 0
+2025-12-20 22:08:27,726 - INFO - New connection from ('127.0.0.1', 49173). Active: 1
+2025-12-20 22:08:27,727 - INFO - Connection closed: ('127.0.0.1', 49173). Active: 0
+2025-12-20 22:08:27,995 - INFO - New connection from ('127.0.0.1', 49174). Active: 1
+2025-12-20 22:08:27,997 - INFO - Connection closed: ('127.0.0.1', 49174). Active: 0
+2025-12-20 22:08:27,997 - INFO - New connection from ('127.0.0.1', 49175). Active: 1
+2025-12-20 22:08:27,998 - INFO - Connection closed: ('127.0.0.1', 49175). Active: 0
+2025-12-20 22:08:27,998 - INFO - New connection from ('127.0.0.1', 49176). Active: 1
+2025-12-20 22:08:27,999 - INFO - Connection closed: ('127.0.0.1', 49176). Active: 0
+2025-12-20 22:08:28,242 - INFO - New connection from ('127.0.0.1', 49177). Active: 1
+2025-12-20 22:08:28,243 - INFO - Connection closed: ('127.0.0.1', 49177). Active: 0
+2025-12-20 22:08:28,243 - INFO - New connection from ('127.0.0.1', 49178). Active: 1
+2025-12-20 22:08:28,244 - INFO - Connection closed: ('127.0.0.1', 49178). Active: 0
+2025-12-20 22:08:28,244 - INFO - New connection from ('127.0.0.1', 49179). Active: 1
+2025-12-20 22:08:28,245 - INFO - Connection closed: ('127.0.0.1', 49179). Active: 0
+2025-12-20 22:08:28,531 - INFO - New connection from ('127.0.0.1', 49180). Active: 1
+2025-12-20 22:08:28,532 - INFO - Connection closed: ('127.0.0.1', 49180). Active: 0
+2025-12-20 22:08:28,532 - INFO - New connection from ('127.0.0.1', 49181). Active: 1
+2025-12-20 22:08:28,533 - INFO - Connection closed: ('127.0.0.1', 49181). Active: 0
+2025-12-20 22:08:28,533 - INFO - New connection from ('127.0.0.1', 49182). Active: 1
+2025-12-20 22:08:28,533 - INFO - Connection closed: ('127.0.0.1', 49182). Active: 0
+2025-12-20 22:08:28,774 - INFO - New connection from ('127.0.0.1', 49184). Active: 1
+2025-12-20 22:08:28,775 - INFO - Connection closed: ('127.0.0.1', 49184). Active: 0
+2025-12-20 22:08:28,775 - INFO - New connection from ('127.0.0.1', 49185). Active: 1
+2025-12-20 22:08:28,776 - INFO - Connection closed: ('127.0.0.1', 49185). Active: 0
+2025-12-20 22:08:28,776 - INFO - New connection from ('127.0.0.1', 49186). Active: 1
+2025-12-20 22:08:28,777 - INFO - Connection closed: ('127.0.0.1', 49186). Active: 0
+2025-12-20 22:08:29,056 - INFO - New connection from ('127.0.0.1', 49187). Active: 1
+2025-12-20 22:08:29,057 - INFO - Connection closed: ('127.0.0.1', 49187). Active: 0
+2025-12-20 22:08:29,057 - INFO - New connection from ('127.0.0.1', 49188). Active: 1
+2025-12-20 22:08:29,058 - INFO - Connection closed: ('127.0.0.1', 49188). Active: 0
+2025-12-20 22:08:29,058 - INFO - New connection from ('127.0.0.1', 49189). Active: 1
+2025-12-20 22:08:29,059 - INFO - Connection closed: ('127.0.0.1', 49189). Active: 0
+2025-12-21 11:28:57,579 - INFO - New connection from ('127.0.0.1', 53695). Active: 1
+2025-12-21 11:28:57,596 - INFO - Connection closed: ('127.0.0.1', 53695). Active: 0
+2025-12-21 11:28:57,598 - INFO - New connection from ('127.0.0.1', 53696). Active: 1
+2025-12-21 11:28:57,600 - INFO - Connection closed: ('127.0.0.1', 53696). Active: 0
+2025-12-21 11:28:57,601 - INFO - New connection from ('127.0.0.1', 53697). Active: 1
+2025-12-21 11:28:57,603 - INFO - Connection closed: ('127.0.0.1', 53697). Active: 0
+2025-12-21 11:32:18,627 - INFO - New connection from ('127.0.0.1', 53709). Active: 1
+2025-12-21 11:32:18,628 - INFO - Connection closed: ('127.0.0.1', 53709). Active: 0
+2025-12-21 11:32:18,629 - INFO - New connection from ('127.0.0.1', 53710). Active: 1
+2025-12-21 11:32:18,629 - INFO - Connection closed: ('127.0.0.1', 53710). Active: 0
+2025-12-21 11:32:18,630 - INFO - New connection from ('127.0.0.1', 53711). Active: 1
+2025-12-21 11:32:18,631 - INFO - Connection closed: ('127.0.0.1', 53711). Active: 0
+2025-12-21 11:32:21,318 - INFO - New connection from ('127.0.0.1', 53712). Active: 1
+2025-12-21 11:32:21,320 - INFO - Connection closed: ('127.0.0.1', 53712). Active: 0
+2025-12-21 11:32:21,320 - INFO - New connection from ('127.0.0.1', 53713). Active: 1
+2025-12-21 11:32:21,321 - INFO - Connection closed: ('127.0.0.1', 53713). Active: 0
+2025-12-21 11:32:21,322 - INFO - New connection from ('127.0.0.1', 53714). Active: 1
+2025-12-21 11:32:21,323 - INFO - Connection closed: ('127.0.0.1', 53714). Active: 0
+2025-12-21 11:32:34,935 - INFO - New connection from ('127.0.0.1', 53716). Active: 1
+2025-12-21 11:32:34,936 - INFO - Connection closed: ('127.0.0.1', 53716). Active: 0
+2025-12-21 11:32:34,937 - INFO - New connection from ('127.0.0.1', 53717). Active: 1
+2025-12-21 11:32:34,937 - INFO - Connection closed: ('127.0.0.1', 53717). Active: 0
+2025-12-21 11:32:34,938 - INFO - New connection from ('127.0.0.1', 53718). Active: 1
+2025-12-21 11:32:34,938 - INFO - Connection closed: ('127.0.0.1', 53718). Active: 0
+2025-12-21 11:36:53,081 - INFO - New connection from ('127.0.0.1', 53733). Active: 1
+2025-12-21 11:36:53,082 - INFO - Connection closed: ('127.0.0.1', 53733). Active: 0
+2025-12-21 11:36:53,083 - INFO - New connection from ('127.0.0.1', 53734). Active: 1
+2025-12-21 11:36:53,084 - INFO - Connection closed: ('127.0.0.1', 53734). Active: 0
+2025-12-21 11:36:53,084 - INFO - New connection from ('127.0.0.1', 53735). Active: 1
+2025-12-21 11:36:53,085 - INFO - Connection closed: ('127.0.0.1', 53735). Active: 0
+2025-12-21 11:41:59,435 - INFO - New connection from ('127.0.0.1', 50713). Active: 1
+2025-12-21 11:41:59,436 - INFO - Connection closed: ('127.0.0.1', 50713). Active: 0
+2025-12-21 11:41:59,437 - INFO - New connection from ('127.0.0.1', 50714). Active: 1
+2025-12-21 11:41:59,438 - INFO - Connection closed: ('127.0.0.1', 50714). Active: 0
+2025-12-21 11:41:59,438 - INFO - New connection from ('127.0.0.1', 50715). Active: 1
+2025-12-21 11:41:59,439 - INFO - Connection closed: ('127.0.0.1', 50715). Active: 0
+2025-12-21 11:43:47,551 - INFO - New connection from ('127.0.0.1', 50722). Active: 1
+2025-12-21 11:43:47,552 - INFO - Connection closed: ('127.0.0.1', 50722). Active: 0
+2025-12-21 11:43:47,553 - INFO - New connection from ('127.0.0.1', 50723). Active: 1
+2025-12-21 11:43:47,554 - INFO - Connection closed: ('127.0.0.1', 50723). Active: 0
+2025-12-21 11:43:47,554 - INFO - New connection from ('127.0.0.1', 50724). Active: 1
+2025-12-21 11:43:47,555 - INFO - Connection closed: ('127.0.0.1', 50724). Active: 0
+2025-12-21 11:45:46,457 - INFO - New connection from ('127.0.0.1', 50733). Active: 1
+2025-12-21 11:45:46,459 - INFO - Connection closed: ('127.0.0.1', 50733). Active: 0
+2025-12-21 11:45:46,459 - INFO - New connection from ('127.0.0.1', 50735). Active: 1
+2025-12-21 11:45:46,460 - INFO - Connection closed: ('127.0.0.1', 50735). Active: 0
+2025-12-21 11:45:46,461 - INFO - New connection from ('127.0.0.1', 50736). Active: 1
+2025-12-21 11:45:46,462 - INFO - Connection closed: ('127.0.0.1', 50736). Active: 0
+2025-12-21 11:47:02,992 - INFO - New connection from ('127.0.0.1', 50775). Active: 1
+2025-12-21 11:47:02,993 - INFO - Connection closed: ('127.0.0.1', 50775). Active: 0
+2025-12-21 11:47:02,994 - INFO - New connection from ('127.0.0.1', 50776). Active: 1
+2025-12-21 11:47:02,995 - INFO - Connection closed: ('127.0.0.1', 50776). Active: 0
+2025-12-21 11:47:02,995 - INFO - New connection from ('127.0.0.1', 50777). Active: 1
+2025-12-21 11:47:02,996 - INFO - Connection closed: ('127.0.0.1', 50777). Active: 0
+2025-12-21 11:48:08,685 - INFO - New connection from ('127.0.0.1', 51002). Active: 1
+2025-12-21 11:48:08,686 - INFO - Connection closed: ('127.0.0.1', 51002). Active: 0
+2025-12-21 11:48:08,687 - INFO - New connection from ('127.0.0.1', 51003). Active: 1
+2025-12-21 11:48:08,687 - INFO - Connection closed: ('127.0.0.1', 51003). Active: 0
+2025-12-21 11:48:08,688 - INFO - New connection from ('127.0.0.1', 51004). Active: 1
+2025-12-21 11:48:08,688 - INFO - Connection closed: ('127.0.0.1', 51004). Active: 0
+2025-12-21 11:48:31,771 - INFO - New connection from ('127.0.0.1', 51017). Active: 1
+2025-12-21 11:48:31,771 - INFO - Connection closed: ('127.0.0.1', 51017). Active: 0
+2025-12-21 11:48:31,772 - INFO - New connection from ('127.0.0.1', 51018). Active: 1
+2025-12-21 11:48:31,772 - INFO - Connection closed: ('127.0.0.1', 51018). Active: 0
+2025-12-21 11:48:31,773 - INFO - New connection from ('127.0.0.1', 51019). Active: 1
+2025-12-21 11:48:31,773 - INFO - Connection closed: ('127.0.0.1', 51019). Active: 0
+2025-12-21 11:48:56,249 - INFO - New connection from ('127.0.0.1', 51028). Active: 1
+2025-12-21 11:48:56,250 - INFO - Connection closed: ('127.0.0.1', 51028). Active: 0
+2025-12-21 11:48:56,251 - INFO - New connection from ('127.0.0.1', 51029). Active: 1
+2025-12-21 11:48:56,251 - INFO - Connection closed: ('127.0.0.1', 51029). Active: 0
+2025-12-21 11:48:56,252 - INFO - New connection from ('127.0.0.1', 51030). Active: 1
+2025-12-21 11:48:56,253 - INFO - Connection closed: ('127.0.0.1', 51030). Active: 0
+2025-12-21 11:50:46,856 - INFO - New connection from ('127.0.0.1', 51035). Active: 1
+2025-12-21 11:50:46,857 - INFO - Connection closed: ('127.0.0.1', 51035). Active: 0
+2025-12-21 11:50:46,858 - INFO - New connection from ('127.0.0.1', 51036). Active: 1
+2025-12-21 11:50:46,858 - INFO - Connection closed: ('127.0.0.1', 51036). Active: 0
+2025-12-21 11:50:46,859 - INFO - New connection from ('127.0.0.1', 51037). Active: 1
+2025-12-21 11:50:46,860 - INFO - Connection closed: ('127.0.0.1', 51037). Active: 0
+2025-12-21 11:51:02,566 - INFO - New connection from ('127.0.0.1', 51039). Active: 1
+2025-12-21 11:51:02,567 - INFO - Connection closed: ('127.0.0.1', 51039). Active: 0
+2025-12-21 11:51:02,568 - INFO - New connection from ('127.0.0.1', 51040). Active: 1
+2025-12-21 11:51:02,568 - INFO - Connection closed: ('127.0.0.1', 51040). Active: 0
+2025-12-21 11:51:02,569 - INFO - New connection from ('127.0.0.1', 51041). Active: 1
+2025-12-21 11:51:02,569 - INFO - Connection closed: ('127.0.0.1', 51041). Active: 0
+2025-12-21 11:51:17,630 - INFO - New connection from ('127.0.0.1', 51046). Active: 1
+2025-12-21 11:51:17,631 - INFO - Connection closed: ('127.0.0.1', 51046). Active: 0
+2025-12-21 11:51:17,632 - INFO - New connection from ('127.0.0.1', 51047). Active: 1
+2025-12-21 11:51:17,632 - INFO - Connection closed: ('127.0.0.1', 51047). Active: 0
+2025-12-21 11:51:17,633 - INFO - New connection from ('127.0.0.1', 51048). Active: 1
+2025-12-21 11:51:17,634 - INFO - Connection closed: ('127.0.0.1', 51048). Active: 0
+2025-12-21 11:51:27,418 - INFO - New connection from ('127.0.0.1', 51050). Active: 1
+2025-12-21 11:51:27,419 - INFO - Connection closed: ('127.0.0.1', 51050). Active: 0
+2025-12-21 11:51:27,419 - INFO - New connection from ('127.0.0.1', 51051). Active: 1
+2025-12-21 11:51:27,420 - INFO - Connection closed: ('127.0.0.1', 51051). Active: 0
+2025-12-21 11:51:27,420 - INFO - New connection from ('127.0.0.1', 51052). Active: 1
+2025-12-21 11:51:27,421 - INFO - Connection closed: ('127.0.0.1', 51052). Active: 0
+2025-12-21 11:52:36,371 - INFO - New connection from ('127.0.0.1', 51056). Active: 1
+2025-12-21 11:52:36,372 - INFO - Connection closed: ('127.0.0.1', 51056). Active: 0
+2025-12-21 11:52:36,372 - INFO - New connection from ('127.0.0.1', 51057). Active: 1
+2025-12-21 11:52:36,373 - INFO - Connection closed: ('127.0.0.1', 51057). Active: 0
+2025-12-21 11:52:36,373 - INFO - New connection from ('127.0.0.1', 51058). Active: 1
+2025-12-21 11:52:36,374 - INFO - Connection closed: ('127.0.0.1', 51058). Active: 0
+2025-12-21 11:53:54,657 - INFO - New connection from ('127.0.0.1', 51065). Active: 1
+2025-12-21 11:53:54,658 - INFO - Connection closed: ('127.0.0.1', 51065). Active: 0
+2025-12-21 11:53:54,658 - INFO - New connection from ('127.0.0.1', 51066). Active: 1
+2025-12-21 11:53:54,659 - INFO - Connection closed: ('127.0.0.1', 51066). Active: 0
+2025-12-21 11:53:54,659 - INFO - New connection from ('127.0.0.1', 51067). Active: 1
+2025-12-21 11:53:54,660 - INFO - Connection closed: ('127.0.0.1', 51067). Active: 0
+2025-12-21 11:55:31,539 - INFO - New connection from ('127.0.0.1', 51079). Active: 1
+2025-12-21 11:55:31,540 - INFO - Connection closed: ('127.0.0.1', 51079). Active: 0
+2025-12-21 11:55:31,540 - INFO - New connection from ('127.0.0.1', 51080). Active: 1
+2025-12-21 11:55:31,541 - INFO - Connection closed: ('127.0.0.1', 51080). Active: 0
+2025-12-21 11:55:31,541 - INFO - New connection from ('127.0.0.1', 51081). Active: 1
+2025-12-21 11:55:31,542 - INFO - Connection closed: ('127.0.0.1', 51081). Active: 0
+2025-12-21 11:56:20,596 - INFO - New connection from ('127.0.0.1', 51083). Active: 1
+2025-12-21 11:56:20,597 - INFO - Connection closed: ('127.0.0.1', 51083). Active: 0
+2025-12-21 11:56:20,598 - INFO - New connection from ('127.0.0.1', 51084). Active: 1
+2025-12-21 11:56:20,599 - INFO - Connection closed: ('127.0.0.1', 51084). Active: 0
+2025-12-21 11:56:20,599 - INFO - New connection from ('127.0.0.1', 51086). Active: 1
+2025-12-21 11:56:20,600 - INFO - Connection closed: ('127.0.0.1', 51086). Active: 0
+2025-12-21 11:56:30,320 - INFO - New connection from ('127.0.0.1', 51088). Active: 1
+2025-12-21 11:56:30,320 - INFO - Connection closed: ('127.0.0.1', 51088). Active: 0
+2025-12-21 11:56:30,321 - INFO - New connection from ('127.0.0.1', 51089). Active: 1
+2025-12-21 11:56:30,322 - INFO - Connection closed: ('127.0.0.1', 51089). Active: 0
+2025-12-21 11:56:30,322 - INFO - New connection from ('127.0.0.1', 51090). Active: 1
+2025-12-21 11:56:30,323 - INFO - Connection closed: ('127.0.0.1', 51090). Active: 0
+2025-12-21 11:56:43,827 - INFO - New connection from ('127.0.0.1', 51091). Active: 1
+2025-12-21 11:56:43,827 - INFO - Connection closed: ('127.0.0.1', 51091). Active: 0
+2025-12-21 11:56:43,828 - INFO - New connection from ('127.0.0.1', 51092). Active: 1
+2025-12-21 11:56:43,829 - INFO - Connection closed: ('127.0.0.1', 51092). Active: 0
+2025-12-21 11:56:43,829 - INFO - New connection from ('127.0.0.1', 51093). Active: 1
+2025-12-21 11:56:43,830 - INFO - Connection closed: ('127.0.0.1', 51093). Active: 0
+2025-12-21 11:56:53,725 - INFO - New connection from ('127.0.0.1', 51096). Active: 1
+2025-12-21 11:56:53,726 - INFO - Connection closed: ('127.0.0.1', 51096). Active: 0
+2025-12-21 11:56:53,726 - INFO - New connection from ('127.0.0.1', 51097). Active: 1
+2025-12-21 11:56:53,727 - INFO - Connection closed: ('127.0.0.1', 51097). Active: 0
+2025-12-21 11:56:53,728 - INFO - New connection from ('127.0.0.1', 51098). Active: 1
+2025-12-21 11:56:53,729 - INFO - Connection closed: ('127.0.0.1', 51098). Active: 0
+2025-12-21 11:57:13,738 - INFO - New connection from ('127.0.0.1', 51102). Active: 1
+2025-12-21 11:57:13,739 - INFO - Connection closed: ('127.0.0.1', 51102). Active: 0
+2025-12-21 11:57:13,740 - INFO - New connection from ('127.0.0.1', 51103). Active: 1
+2025-12-21 11:57:13,740 - INFO - Connection closed: ('127.0.0.1', 51103). Active: 0
+2025-12-21 11:57:13,741 - INFO - New connection from ('127.0.0.1', 51104). Active: 1
+2025-12-21 11:57:13,742 - INFO - Connection closed: ('127.0.0.1', 51104). Active: 0
+2025-12-21 11:57:26,358 - INFO - New connection from ('127.0.0.1', 51107). Active: 1
+2025-12-21 11:57:26,359 - INFO - Connection closed: ('127.0.0.1', 51107). Active: 0
+2025-12-21 11:57:26,359 - INFO - New connection from ('127.0.0.1', 51108). Active: 1
+2025-12-21 11:57:26,360 - INFO - Connection closed: ('127.0.0.1', 51108). Active: 0
+2025-12-21 11:57:26,361 - INFO - New connection from ('127.0.0.1', 51110). Active: 1
+2025-12-21 11:57:26,361 - INFO - Connection closed: ('127.0.0.1', 51110). Active: 0
+2025-12-21 11:57:34,471 - INFO - New connection from ('127.0.0.1', 51112). Active: 1
+2025-12-21 11:57:34,471 - INFO - Connection closed: ('127.0.0.1', 51112). Active: 0
+2025-12-21 11:57:34,472 - INFO - New connection from ('127.0.0.1', 51113). Active: 1
+2025-12-21 11:57:34,473 - INFO - Connection closed: ('127.0.0.1', 51113). Active: 0
+2025-12-21 11:57:34,473 - INFO - New connection from ('127.0.0.1', 51114). Active: 1
+2025-12-21 11:57:34,474 - INFO - Connection closed: ('127.0.0.1', 51114). Active: 0
+2025-12-21 12:09:19,640 - INFO - New connection from ('127.0.0.1', 57943). Active: 1
+2025-12-21 12:09:19,642 - INFO - Connection closed: ('127.0.0.1', 57943). Active: 0
+2025-12-21 12:09:19,643 - INFO - New connection from ('127.0.0.1', 57944). Active: 1
+2025-12-21 12:09:19,643 - INFO - Connection closed: ('127.0.0.1', 57944). Active: 0
+2025-12-21 12:09:19,644 - INFO - New connection from ('127.0.0.1', 57945). Active: 1
+2025-12-21 12:09:19,644 - INFO - Connection closed: ('127.0.0.1', 57945). Active: 0
+2025-12-21 12:11:27,783 - INFO - New connection from ('127.0.0.1', 57955). Active: 1
+2025-12-21 12:11:27,784 - INFO - Connection closed: ('127.0.0.1', 57955). Active: 0
+2025-12-21 12:11:27,784 - INFO - New connection from ('127.0.0.1', 57956). Active: 1
+2025-12-21 12:11:27,785 - INFO - Connection closed: ('127.0.0.1', 57956). Active: 0
+2025-12-21 12:11:27,785 - INFO - New connection from ('127.0.0.1', 57957). Active: 1
+2025-12-21 12:11:27,786 - INFO - Connection closed: ('127.0.0.1', 57957). Active: 0
+2025-12-21 12:11:36,110 - INFO - New connection from ('127.0.0.1', 57959). Active: 1
+2025-12-21 12:11:36,111 - INFO - Connection closed: ('127.0.0.1', 57959). Active: 0
+2025-12-21 12:11:36,111 - INFO - New connection from ('127.0.0.1', 57960). Active: 1
+2025-12-21 12:11:36,112 - INFO - Connection closed: ('127.0.0.1', 57960). Active: 0
+2025-12-21 12:11:36,113 - INFO - New connection from ('127.0.0.1', 57961). Active: 1
+2025-12-21 12:11:36,113 - INFO - Connection closed: ('127.0.0.1', 57961). Active: 0
+2025-12-21 12:11:36,745 - INFO - New connection from ('127.0.0.1', 57963). Active: 1
+2025-12-21 12:11:36,746 - INFO - Connection closed: ('127.0.0.1', 57963). Active: 0
+2025-12-21 12:11:36,746 - INFO - New connection from ('127.0.0.1', 57964). Active: 1
+2025-12-21 12:11:36,747 - INFO - Connection closed: ('127.0.0.1', 57964). Active: 0
+2025-12-21 12:11:36,747 - INFO - New connection from ('127.0.0.1', 57965). Active: 1
+2025-12-21 12:11:36,748 - INFO - Connection closed: ('127.0.0.1', 57965). Active: 0
+2025-12-21 12:11:37,433 - INFO - New connection from ('127.0.0.1', 57966). Active: 1
+2025-12-21 12:11:37,434 - INFO - Connection closed: ('127.0.0.1', 57966). Active: 0
+2025-12-21 12:11:37,434 - INFO - New connection from ('127.0.0.1', 57967). Active: 1
+2025-12-21 12:11:37,435 - INFO - Connection closed: ('127.0.0.1', 57967). Active: 0
+2025-12-21 12:11:37,435 - INFO - New connection from ('127.0.0.1', 57968). Active: 1
+2025-12-21 12:11:37,436 - INFO - Connection closed: ('127.0.0.1', 57968). Active: 0
+2025-12-21 12:11:37,839 - INFO - New connection from ('127.0.0.1', 57969). Active: 1
+2025-12-21 12:11:37,839 - INFO - Connection closed: ('127.0.0.1', 57969). Active: 0
+2025-12-21 12:11:37,840 - INFO - New connection from ('127.0.0.1', 57970). Active: 1
+2025-12-21 12:11:37,840 - INFO - Connection closed: ('127.0.0.1', 57970). Active: 0
+2025-12-21 12:11:37,840 - INFO - New connection from ('127.0.0.1', 57971). Active: 1
+2025-12-21 12:11:37,841 - INFO - Connection closed: ('127.0.0.1', 57971). Active: 0

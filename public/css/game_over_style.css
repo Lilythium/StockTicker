@@ -1,0 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap');
+
+/* ===== VARIABLES ===== */
+:root {
+    --cardboard: #f4e9d8;
+    --paper-white: #fffdf6;
+    --ink-black: #2c2c2c;
+    --border-thick: 3px solid #2c2c2c;
+    --retro-font: 'Arvo', serif;
+    --ticker-font: 'Courier New', Courier, monospace;
+
+    /* Stock Palette */
+    --gold: #f1c40f;
+    --silver: #bdc3c7;
+    --oil: #2c3e50;
+    --bonds: #2980b9;
+    --industrials: #8e44ad;
+    --grain: #d35400;
+}
+
+/* ===== CORE & BASE ===== */
+* { box-sizing: border-box; }
+
+body {
+    background-color: #d2b48c;
+    background-image: radial-gradient(#bc9b6a 1px, transparent 0);
+    background-size: 24px 24px;
+    font-family: var(--retro-font);
+    color: var(--ink-black);
+    margin: 0;
+    padding: 20px;
+}
+
+.end-container {
+    max-width: 1100px;
+    margin: 20px auto;
+    background: var(--cardboard);
+    border: var(--border-thick);
+    padding: 0;
+    box-shadow: 12px 12px 0px rgba(0,0,0,0.3);
+}
+
+/* ===== HEADER & ANNOUNCEMENTS ===== */
+.end-header {
+    background: #e7d7b8;
+    border-bottom: var(--border-thick);
+    padding: 30px;
+    text-align: center;
+}
+
+.end-header h1 {
+    font-size: 52px;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink-black);
+    letter-spacing: 2px;
+}
+
+.winner-announcement {
+    display: inline-block;
+    margin-top: 15px;
+    background: #fff;
+    border: 3px solid var(--ink-black);
+    padding: 10px 20px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+    font-size: 20px;
+}
+
+.section-title {
+    font-family: var(--retro-font);
+    text-transform: uppercase;
+    background: var(--ink-black);
+    color: white;
+    padding: 8px 15px;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+/* ===== MAIN LAYOUT COLUMNS ===== */
+.end-layout {
+    display: flex;
+    gap: 0;
+    border-bottom: var(--border-thick);
+}
+
+.standings-column,
+.chart-column {
+    padding: 30px;
+}
+
+.standings-column {
+    flex: 1;
+    border-right: var(--border-thick);
+    background: var(--paper-white);
+}
+
+.chart-column {
+    flex: 1.5;
+    background: #fdf6e3;
+}
+
+/* ===== PLAYER RANKINGS ===== */
+.player-rank-card {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: var(--border-thick);
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+}
+
+.rank-1 { background-color: var(--gold) !important; transform: scale(1.02); }
+.rank-2 { background-color: var(--silver) !important; }
+
+.player-info {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 15px;
+}
+
+.player-worth {
+    font-family: var(--ticker-font);
+    font-weight: bold;
+}
+
+/* ===== NET WORTH DATA TABLE ===== */
+.networth-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: var(--border-thick);
+    background: white;
+}
+
+.networth-table th {
+    background: #e0d1b8;
+    border-bottom: var(--border-thick);
+    border-right: 1px solid rgba(0,0,0,0.1);
+    padding: 10px;
+    font-family: var(--ticker-font);
+}
+
+.networth-table td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-right: 1px solid rgba(0,0,0,0.1);
+    font-family: var(--ticker-font);
+    text-align: center;
+}
+
+/* ===== LOGS & HISTORY ===== */
+.game-history-section {
+    padding: 30px;
+    background: var(--paper-white);
+}
+
+.history-display {
+    background: #fffdf6;
+    color: var(--ink-black);
+    border: 2px dashed rgba(0,0,0,0.3);
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: var(--ticker-font);
+}
+
+.history-roll { border-left: 4px solid #f39c12; background: rgba(243, 156, 18, 0.05); }
+.history-phase { border-left: 4px solid #3498db; background: rgba(52, 152, 219, 0.05); }
+.history-trade { border-left: 4px solid #2ecc71; background: rgba(46, 204, 113, 0.05); }
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    padding: 12px 25px;
+    border: var(--border-thick);
+    text-decoration: none;
+    font-family: var(--retro-font);
+    text-transform: uppercase;
+    font-weight: bold;
+    box-shadow: 4px 4px 0px var(--ink-black);
+    transition: all 0.1s;
+}
+
+.btn-primary:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--ink-black);
+}

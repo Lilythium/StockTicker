@@ -1,0 +1,330 @@
+@import url('https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap');
+
+/* ===== VARIABLES ===== */
+:root {
+    --cardboard: #f4e9d8;
+    --paper-white: #fffdfa;
+    --ink-black: #2c2c2c;
+    --border-thick: 3px solid #2c2c2c;
+    --retro-font: 'Arvo', serif;
+    --ticker-font: 'Courier New', Courier, monospace;
+    --action-blue: #3498db;
+    --action-green: #2ecc71;
+    --action-red: #e74c3c;
+    --action-gold: #f1c40f;
+}
+
+/* ===== CORE & BASE ===== */
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #d2b48c;
+    background-image: radial-gradient(#bc9b6a 1px, transparent 0);
+    background-size: 24px 24px;
+    font-family: var(--retro-font);
+    color: var(--ink-black);
+}
+
+/* ===== LAYOUT WRAPPERS ===== */
+.page-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.waiting-container {
+    flex: 1;
+    max-width: 650px;
+    padding: 25px 40px;
+    background: var(--paper-white);
+    border: 4px solid var(--ink-black);
+    box-shadow: 12px 12px 0px rgba(0,0,0,0.1);
+}
+
+/* ===== HEADER & GAME ID ===== */
+.game-info h1 {
+    font-size: 32px;
+    margin: 0 0 15px 0;
+    text-transform: uppercase;
+    color: var(--action-blue);
+    -webkit-text-stroke: 1px var(--ink-black);
+    text-align: center;
+}
+
+.game-id-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    max-width: fit-content;
+    margin: 0 auto 20px auto;
+    padding: 10px 20px;
+    background: var(--cardboard);
+    border: var(--border-thick);
+    box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+}
+
+.game-id-label {
+    margin: 0;
+    padding-right: 15px;
+    font-size: 18px;
+    text-transform: uppercase;
+    border-right: 2px solid #787878;
+}
+
+.game-id-value {
+    margin: 0;
+    font-family: var(--ticker-font);
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* ===== PLAYERS SECTION ===== */
+.players-waiting {
+    margin: 15px 0;
+    padding: 25px;
+    background: var(--cardboard);
+    border: var(--border-thick);
+    box-shadow: 4px 4px 0px var(--ink-black);
+}
+
+.players-waiting h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    text-align: center;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--ink-black);
+}
+
+.player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 15px 20px;
+    background: white;
+    border: 2px solid var(--ink-black);
+    font-family: var(--ticker-font);
+}
+
+.player-item.you { border: 3px solid var(--action-green); }
+.player-item.host { border-left: 15px solid var(--action-gold); }
+.player-name { font-size: 20px; font-weight: bold; }
+
+.player-badge {
+    margin-left: 8px;
+    padding: 2px 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    border-radius: 15px;
+    border: 1px solid var(--ink-black);
+}
+.player-badge.you { background: var(--action-green); color: white; }
+.player-badge.host { background: var(--action-gold); color: var(--ink-black); }
+
+.empty-slot {
+    margin-bottom: 10px;
+    padding: 15px;
+    background: rgba(0,0,0,0.05);
+    border: 2px dashed #bdc3c7;
+    text-align: center;
+    color: #95a5a6;
+    font-family: var(--ticker-font);
+}
+
+/* ===== STATUS & COPY LINK ===== */
+.status-message {
+    margin: 20px 0;
+    padding: 15px;
+    border: var(--border-thick);
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.status-waiting { background: var(--action-gold); }
+.status-ready { background: var(--action-green); color: white; }
+
+.share-link { margin: 15px 0; }
+.copy-link { display: flex; }
+.copy-link input {
+    flex: 1;
+    padding: 12px;
+    background: white;
+    border: var(--border-thick);
+    font-family: var(--ticker-font);
+    font-weight: bold;
+}
+
+.copy-button {
+    padding: 0 25px;
+    background: var(--action-blue);
+    color: white;
+    border: var(--border-thick);
+    border-left: none;
+    font-family: var(--retro-font);
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+/* ===== SIDEBAR & SETTINGS ===== */
+.host-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    padding: 20px;
+    background: var(--paper-white);
+    border: var(--border-thick);
+    box-shadow: 8px 8px 0px rgba(0,0,0,0.1);
+}
+
+.sidebar-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    text-align: center;
+    border-bottom: var(--border-thick);
+}
+
+.sidebar-header h3 { margin: 0; font-size: 1.2rem; }
+
+.setting-group { margin-bottom: 20px; }
+.setting-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.setting-group label span {
+    padding: 2px 6px;
+    background: #e8ded0;
+    border: 1px solid var(--ink-black);
+    color: var(--action-blue);
+    font-family: var(--ticker-font);
+}
+
+.setting-group input:not(.retro-slider) {
+    width: 100%;
+    padding: 10px;
+    background: var(--cardboard);
+    border: 2px solid var(--ink-black);
+    font-family: var(--ticker-font);
+    font-weight: bold;
+}
+
+.setting-group small { font-size: 11px; color: #666; font-style: italic; }
+.settings-note { padding-top: 15px; font-size: 12px; border-top: 1px dashed var(--ink-black); line-height: 1.4; }
+
+/* ===== INPUTS & SLIDERS ===== */
+.retro-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 14px;
+    margin: 15px 0;
+    background: var(--cardboard);
+    border: var(--border-thick);
+    cursor: pointer;
+    outline: none;
+}
+
+.retro-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 34px;
+    background: var(--action-gold);
+    border: var(--border-thick);
+    box-shadow: 4px 4px 0px var(--ink-black);
+    transition: transform 0.1s;
+    cursor: pointer;
+}
+
+.retro-slider::-moz-range-thumb {
+    width: 24px;
+    height: 34px;
+    background: var(--action-gold);
+    border: var(--border-thick);
+    box-shadow: 4px 4px 0px var(--ink-black);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+/* ===== BUTTONS ===== */
+.start-button {
+    width: 100%;
+    padding: 20px;
+    background: var(--action-green);
+    color: white;
+    border: var(--border-thick);
+    font-family: var(--retro-font);
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 6px 6px 0px var(--ink-black);
+    transition: 0.1s;
+    cursor: pointer;
+}
+
+.start-button:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 8px 8px 0px var(--ink-black); }
+.start-button:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--ink-black); }
+.start-button:disabled { background: #bdc3c7; filter: grayscale(1); cursor: not-allowed; box-shadow: none; }
+
+.btn-leave {
+    display: block;
+    padding: 12px;
+    background: var(--action-red);
+    color: white;
+    border: var(--border-thick);
+    text-decoration: none;
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0px var(--ink-black);
+}
+
+.btn-reset {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background: #bdc3c7;
+    color: var(--ink-black);
+    border: 2px solid var(--ink-black);
+    font-family: var(--retro-font);
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 3px 3px 0px var(--ink-black);
+    transition: 0.1s;
+    cursor: pointer;
+}
+
+.btn-reset:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px var(--ink-black); }
+
+/* ===== DEBUG TOOLS ===== */
+.debug-info {
+    padding: 15px;
+    background: #1a1a1a;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 11px;
+    border: 2px solid #555;
+}
+
+.toggle-debug {
+    padding: 5px 10px;
+    background: #eee;
+    border: 1px solid #999;
+    font-family: var(--ticker-font);
+    cursor: pointer;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+    .page-wrapper { flex-direction: column; align-items: center; }
+    .host-sidebar { width: 100%; max-width: 650px; }
+}
