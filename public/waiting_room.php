@@ -40,28 +40,6 @@ if (isset($gameState['status']) && $gameState['status'] === 'active') {
 $rematchSettings = $_SESSION['rematch_settings'] ?? null;
 $hasRematchSettings = !empty($rematchSettings);
 
-// Handle start game action
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'start_game' && $isFirstPlayer) {
-        $settings = [
-                'max_rounds'       => (int)($_POST['max_rounds'] ?? 15),
-                'trading_duration' => (int)($_POST['trading_duration'] ?? 2),
-                'dice_duration'    => (int)($_POST['dice_duration'] ?? 15),
-                'starting_cash'    => (int)($_POST['starting_cash'] ?? 5000)
-        ];
-
-        unset($_SESSION['rematch_settings']);
-        $startResponse = $client->startGame($gameId, $settings);
-
-        if (isset($startResponse['success']) && $startResponse['success']) {
-            header("Location: game.php");
-            exit;
-        } else {
-            $error = $startResponse['error'] ?? $startResponse['data']['message'] ?? 'Failed to start game';
-        }
-    }
-}
-
 $playerCount = 0;
 if (isset($gameState['players'])) {
     foreach ($gameState['players'] as $player) {
@@ -73,6 +51,36 @@ if (isset($gameState['players'])) {
 
 $maxPlayers = $gameState['player_count'] ?? 4;
 $canStart = $playerCount >= 2 && $isFirstPlayer;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'start_game') {
+    if ($isFirstPlayer) {
+        // Collect settings from the form
+        $settings = [
+                'max_rounds' => $_POST['max_rounds'] ?? 15,
+                'trading_duration' => $_POST['trading_duration'] ?? 2,
+                'dice_duration' => $_POST['dice_duration'] ?? 15,
+                'starting_cash' => $_POST['starting_cash'] ?? 5000
+        ];
+
+        // Call the API to start the game
+        // (Assuming your GameClient has a startGame method)
+        $result = $client->startGame($gameId, $settings);
+
+        if ($result['success']) {
+            header("Location: game.php");
+            exit;
+        } else {
+            $error = $result['error'] ?? "Failed to start game";
+            // Handle error (display it or log it)
+        }
+    }
+}
+
+// Default settings
+$defaultMaxRounds = $rematchSettings['max_rounds'] ?? 15;
+$defaultTradingDuration = $rematchSettings['trading_duration'] ?? 2;
+$defaultDiceDuration = $rematchSettings['dice_duration'] ?? 15;
+$defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,10 +102,6 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
                 <div class="game-id-value"><?= htmlspecialchars($gameId) ?></div>
             </div>
 
-            <?php if (isset($error)): ?>
-                <div class="message error">⚠️ <?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
-
             <div class="share-link">
                 <p><strong>📋 Share this link with friends:</strong></p>
                 <div class="copy-link" style="display: flex; gap: 5px;">
@@ -113,7 +117,7 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
             </div>
 
             <div class="players-waiting">
-                <h2>👥 Players (<?= $playerCount ?>/<?= $maxPlayers ?>)</h2>
+                <h2>👥 Players (<span id="playerCount"><?= $playerCount ?></span>/<?= $maxPlayers ?>)</h2>
                 <div class="player-list">
                     <?php
                     $slotsFilled = 0;
@@ -154,6 +158,7 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
                         <?= $canStart ? 'Start Game' : '⛔ Need 2+ Players' ?>
                     </button>
                 </form>
+
             <?php else: ?>
                 <div style="text-align: center; padding: 20px; color: #333; font-style: italic;">
                     ⏳ Waiting for host to start the game...
@@ -162,13 +167,6 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
 
             <div class="action-buttons" style="margin-top: 20px; text-align: center;">
                 <a href="leave_game.php" class="btn-leave" onclick="return confirm('Leave the waiting room?')">Leave Game</a>
-            </div>
-
-            <div style="text-align: center; margin-top: 20px; color: #333; font-size: 14px;">
-                <label style="cursor: pointer;">
-                    <input type="checkbox" id="autoRefresh" checked onchange="toggleAutoRefresh()">
-                    Auto-refresh (every 3 seconds)
-                </label>
             </div>
         </div>
     </div>
@@ -182,30 +180,23 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
                 <?php endif; ?>
             </div>
 
-            <?php
-            $defaultMaxRounds = $rematchSettings['max_rounds'] ?? 15;
-            $defaultTradingDuration = $rematchSettings['trading_duration'] ?? 2;
-            $defaultDiceDuration = $rematchSettings['dice_duration'] ?? 15;
-            $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
-            ?>
-
             <div class="setting-group" style="margin-bottom: 15px;">
                 <label>Max Rounds: <span id="val_rounds"><?= $defaultMaxRounds ?></span></label>
-                <input type="range" name="max_rounds" form="startGameForm"
+                <input type="range" name="max_rounds"
                        min="1" max="50" value="<?= $defaultMaxRounds ?>" class="retro-slider"
                        oninput="document.getElementById('val_rounds').innerText = this.value">
             </div>
 
             <div class="setting-group" style="margin-bottom: 15px;">
                 <label>Trading Timer: <span id="val_trading"><?= $defaultTradingDuration ?></span> min</label>
-                <input type="range" name="trading_duration" form="startGameForm"
+                <input type="range" name="trading_duration"
                        min="1" max="10" value="<?= $defaultTradingDuration ?>" class="retro-slider"
                        oninput="document.getElementById('val_trading').innerText = this.value">
             </div>
 
             <div class="setting-group" style="margin-bottom: 15px;">
                 <label>Dice Timer: <span id="val_dice"><?= $defaultDiceDuration ?></span> sec</label>
-                <input type="range" name="dice_duration" form="startGameForm"
+                <input type="range" name="dice_duration"
                        min="0" max="30" value="<?= $defaultDiceDuration ?>" class="retro-slider"
                        oninput="document.getElementById('val_dice').innerText = this.value">
                 <br><small>0 = instant auto-roll</small>
@@ -213,7 +204,7 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
 
             <div class="setting-group" style="margin-bottom: 15px;">
                 <label>Starting Cash: <span id="val_cash">$<?= number_format($defaultStartingCash) ?></span></label>
-                <input type="range" name="starting_cash" form="startGameForm"
+                <input type="range" name="starting_cash"
                        min="500" max="20000" step="500" value="<?= $defaultStartingCash ?>" class="retro-slider"
                        oninput="document.getElementById('val_cash').innerText = '$' + Number(this.value).toLocaleString()">
             </div>
@@ -225,61 +216,16 @@ $canStart = $playerCount >= 2 && $isFirstPlayer;
 </div>
 
 <script>
-    let autoRefreshEnabled = true;
-    let refreshTimeout;
+    // Set global variables for JavaScript
+    window.gameId = <?= json_encode($gameId) ?>;
+    window.playerId = <?= json_encode($playerId) ?>;
+    window.isFirstPlayer = <?= $isFirstPlayer ? 'true' : 'false' ?>;
 
-    function toggleAutoRefresh() {
-        autoRefreshEnabled = document.getElementById('autoRefresh').checked;
-        if (autoRefreshEnabled) {
-            startAutoRefresh();
-        } else {
-            clearTimeout(refreshTimeout);
-        }
-    }
-
-    function startAutoRefresh() {
-        if (autoRefreshEnabled) {
-            refreshTimeout = setTimeout(function() {
-                location.reload();
-            }, 3000);
-        }
-    }
-
-    function confirmStart() {
-        clearTimeout(refreshTimeout);
-        return confirm('Start the game now?');
-    }
-
-    function copyGameLink() {
-        const input = document.getElementById('gameLink');
-        input.select();
-        document.execCommand('copy');
-
-        const button = document.getElementById('copyButton');
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-            button.textContent = 'Copy';
-        }, 2000);
-    }
-
-    function resetSettings() {
-        const defaults = {
-            'max_rounds': 15,
-            'trading_duration': 2,
-            'dice_duration': 15,
-            'starting_cash': 5000
-        };
-
-        for (const [name, value] of Object.entries(defaults)) {
-            const input = document.querySelector(`input[name="${name}"]`);
-            if (input) {
-                input.value = value;
-                input.dispatchEvent(new Event('input'));
-            }
-        }
-    }
-
-    startAutoRefresh();
+    console.log('Window variables set:');
+    console.log('- gameId:', window.gameId);
+    console.log('- playerId:', window.playerId);
+    console.log('- isFirstPlayer:', window.isFirstPlayer);
 </script>
+<script src="js/waiting_room.js"></script>
 </body>
 </html>

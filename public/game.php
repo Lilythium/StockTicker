@@ -33,7 +33,6 @@ $currentPlayerSlot = null;
 foreach ($gameState['players'] as $slot => $player) {
     if (!empty($player['player_id']) && $player['player_id'] === $currentPlayerId) {
         $currentPlayerSlot = (int)$slot;
-        // Sync name if changed
         if ($player['name'] !== $currentPlayerName) {
             $_SESSION['player_name'] = $player['name'];
             $currentPlayerName = $player['name'];
@@ -42,7 +41,6 @@ foreach ($gameState['players'] as $slot => $player) {
     }
 }
 
-// Fallback search by name if ID fails
 if ($currentPlayerSlot === null) {
     foreach ($gameState['players'] as $slot => $player) {
         if (($player['name'] ?? '') === $currentPlayerName) {
@@ -53,42 +51,6 @@ if ($currentPlayerSlot === null) {
 }
 
 if ($currentPlayerSlot === null) die("❌ Cannot determine your player slot.");
-
-/* ===== ACTION PROCESSING ===== */
-$actionResult = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle Game Commands (Buy/Sell/Roll)
-    if (isset($_POST['action'])) {
-        $action = $_POST['action'];
-        $params = array_filter($_POST, fn($k) => $k !== 'action', ARRAY_FILTER_USE_KEY);
-
-        if (in_array($action, ['buy_shares', 'sell_shares', 'roll_dice'])) {
-            $params['player'] = (string)$currentPlayerSlot;
-        }
-
-        if (isset($params['amount'])) {
-            $params['amount'] = (int)preg_replace('/[^0-9]/', '', $params['amount']);
-        }
-
-        $response = $client->sendCommand($action, $params);
-        if (!empty($response['success'])) {
-            $gameState = $client->getGameState($gameId)['data'] ?? [];
-        } else {
-            $errorMsg = $response['data']['error'] ?? $response['error'] ?? 'Unknown error';
-            $actionResult = "<div class='error'>❌ Action failed: " . htmlspecialchars($errorMsg) . "</div>";
-        }
-    }
-
-    // Handle Phase Transitions
-    if (isset($_POST['done_trading'])) {
-        $response = $client->sendCommand('done_trading', ['player' => (string)$currentPlayerSlot]);
-        if (!empty($response['success'])) {
-            header("Location: game.php");
-            exit;
-        }
-        $actionResult = "<div class='error'>❌ Failed to mark done trading</div>";
-    }
-}
 
 /* ===== PHASE & UI VARS ===== */
 $currentPhase = $gameState['current_phase'] ?? 'trading';
@@ -145,22 +107,13 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 <div class="action-form <?= ($currentPlayerDoneTrading && $currentPhase === 'trading') ? 'form-disabled' : '' ?>">
     <div class="form-row three-columns">
         <div class="form-column column-roll">
-            <?php if ($currentPhase === 'trading'): ?>
-                <div class="roll-preview <?= $currentPlayerDoneTrading ? 'ready' : '' ?>">
-                    <div class="roll-preview-icon"><?= $currentPlayerDoneTrading ? '✅' : '🎲' ?></div>
-                    <div class="roll-preview-text"><?= $currentPlayerDoneTrading ? 'Ready for Dice Phase' : 'Roll Dice After Trading' ?></div>
-                </div>
-            <?php else: ?>
-                <form method="POST">
-                    <button type="submit" name="action" value="roll_dice" class="btn-roll-ready" <?= !$isYourTurn ? 'disabled' : '' ?>>
-                        <?= $isYourTurn ? '🎲 ROLL!' : '⏳ Waiting...' ?>
-                    </button>
-                </form>
-            <?php endif; ?>
+            <button type="button" class="btn-roll-ready" <?= !$isYourTurn ? 'disabled' : '' ?>>
+                <?= $isYourTurn ? '🎲 ROLL!' : '⏳ Waiting...' ?>
+            </button>
         </div>
 
         <div class="form-column column-trade">
-            <form method="POST" id="tradeForm" class="trade-form">
+            <form id="tradeForm" class="trade-form">
                 <div class="trade-controls">
                     <select name="stock" id="stockSelect" class="stock-select" required <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>
                         <?php foreach(['Gold', 'Silver', 'Oil', 'Bonds', 'Industrials', 'Grain'] as $s): ?>
@@ -195,30 +148,31 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 
         <div class="form-column column-done">
             <div class="done-trading-section">
-                <?php if ($currentPhase === 'trading'): ?>
-                    <form method="POST">
-                        <input type="hidden" name="done_trading" value="1">
-                        <div class="done-trading-control <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
-                            <div class="checkbox-header"><label><?= $currentPlayerDoneTrading ? 'Trading Complete' : 'Done Trading?' ?></label></div>
-                            <div class="checkbox-wrapper">
-                                <input type="checkbox" id="doneTradingCheckbox" onchange="this.form.submit()" style="display:none;" <?= $currentPlayerDoneTrading ? 'disabled' : '' ?>>
-                                <label for="doneTradingCheckbox" class="checkbox-label">
-                                    <div class="checkbox-box <?= $currentPlayerDoneTrading ? 'checked' : '' ?>"><span class="checkmark">✓</span></div>
-                                    <?php if ($currentPlayerDoneTrading): ?><span class="checkbox-text">Done Trading</span><?php endif; ?>
-                                </label>
-                            </div>
-                            <?php if (!$currentPlayerDoneTrading): ?><div class="checkbox-note">Check to end your trading phase</div><?php endif; ?>
+                <form method="POST" id="doneTradingForm">
+                    <input type="hidden" name="done_trading" value="1">
+                    <div class="done-trading-control <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
+                        <div class="checkbox-header">
+                            <label><?= $currentPlayerDoneTrading ? 'Trading Complete' : 'Done Trading?' ?></label>
                         </div>
-                    </form>
-                <?php else: ?>
-                    <div class="done-trading-control">
-                        <div class="checkbox-header"><label>Dice Phase</label></div>
-                        <div class="roll-preview" style="height: 100px;">
-                            <div class="roll-preview-icon">🎲</div>
-                            <div class="roll-preview-text">Dice Phase</div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox"
+                                   id="doneTradingCheckbox"
+                                   style="display:none;"
+                                    <?= $currentPlayerDoneTrading ? 'disabled checked' : '' ?>>
+                            <label for="doneTradingCheckbox" class="checkbox-label">
+                                <div class="checkbox-box <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
+                                    <span class="checkmark">✓</span>
+                                </div>
+                                <?php if ($currentPlayerDoneTrading): ?>
+                                    <span class="checkbox-text">Done Trading</span>
+                                <?php endif; ?>
+                            </label>
                         </div>
+                        <?php if (!$currentPlayerDoneTrading): ?>
+                            <div class="checkbox-note">Check to end your trading phase</div>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
+                </form>
             </div>
         </div>
     </div>
