@@ -610,7 +610,7 @@ async function revealWhenReady(stock, action, amount, callback) {
                     text.innerText = `Dividends for ${stock} not payable.`;
                 }
             } else {
-                text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
+                text.innerText = `${stock} went ${action.toUpperCase()} ${amount}¢!`;
             }
         }
 
