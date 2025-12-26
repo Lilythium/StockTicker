@@ -603,7 +603,15 @@ async function revealWhenReady(stock, action, amount, callback) {
 
         if (text) {
             text.classList.add('reveal-text');
-            text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
+            if (action.toUpperCase() === "DIV") {
+                if (stockPrices[stock] > 100) {
+                    text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
+                } else {
+                    text.innerText = `Dividends for ${stock} not payable.`;
+                }
+            } else {
+                text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
+            }
         }
 
         setTimeout(() => {

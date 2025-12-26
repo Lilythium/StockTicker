@@ -167,9 +167,6 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                                 <div class="checkbox-box <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
                                     <span class="checkmark">✓</span>
                                 </div>
-                                <?php if ($currentPlayerDoneTrading): ?>
-                                    <span class="checkbox-text">Done Trading</span>
-                                <?php endif; ?>
                             </label>
                         </div>
                     </div>
