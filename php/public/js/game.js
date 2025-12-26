@@ -285,6 +285,19 @@ function initializeTradingForm() {
     const rollButton = document.querySelector('.btn-roll-ready');
     const doneCheckbox = document.getElementById('doneTradingCheckbox');
 
+    function highlightActiveButton() {
+        const currentVal = parseInt(amountInput.value) || 0;
+
+        qtyButtons.forEach(btn => {
+            const btnVal = parseInt(btn.getAttribute('data-amount'));
+            if (currentVal === btnVal) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
     if (rollButton) {
         rollButton.onclick = function(e) {
             e.preventDefault();
@@ -310,6 +323,7 @@ function initializeTradingForm() {
         const price = stockPrices[stock] || 1.00;
         const cost = amount / 100 * price;
         costDisplay.value = `COST: $${cost.toFixed(2)}`;
+        highlightActiveButton();
     }
 
     // Handle trade form submission

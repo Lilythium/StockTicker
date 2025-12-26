@@ -134,7 +134,7 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                             </div>
                         </div>
                         <div class="share-quick-buttons">
-                            <?php foreach([500 => '500', 1000 => '1K', 2000 => '2K'] as $val => $lbl): ?>
+                            <?php foreach([500 => '500', 1000 => '1K', 2000 => '2K', 5000 => '5K'] as $val => $lbl): ?>
                                 <button type="button" class="qty-btn" data-amount="<?= $val ?>" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>><?= $lbl ?></button>
                             <?php endforeach; ?>
                         </div>
@@ -172,9 +172,6 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                                 <?php endif; ?>
                             </label>
                         </div>
-                        <?php if (!$currentPlayerDoneTrading): ?>
-                            <div class="checkbox-note">Check to end your trading phase</div>
-                        <?php endif; ?>
                     </div>
                 </form>
             </div>
