@@ -1,15 +1,19 @@
 <?php
+
+namespace includes;
+
 /**
  * GameClient.php
  * Handles communication with Python game engine via sockets
  */
-
-class GameClient {
+class GameClient
+{
     private $host;
     private $port;
     private $timeout;
 
-    public function __construct($host = '127.0.0.1', $port = 9999, $timeout = 5) {
+    public function __construct($host = '127.0.0.1', $port = 9999, $timeout = 5)
+    {
         $this->host = $host;
         $this->port = $port;
         $this->timeout = $timeout;
@@ -94,14 +98,16 @@ class GameClient {
     /**
      * Quick method to get game state
      */
-    public function getGameState($gameId = null) {
+    public function getGameState($gameId = null)
+    {
         return $this->sendCommand('get_game_state', [], $gameId);
     }
 
     /**
      * Join a game
      */
-    public function joinGame($gameId, $playerId, $playerName) {
+    public function joinGame($gameId, $playerId, $playerName)
+    {
         return $this->sendCommand('join_game', [
             'game_id' => $gameId,
             'player_id' => $playerId,
@@ -112,7 +118,8 @@ class GameClient {
     /**
      * Initialize a new game
      */
-    public function initializeGame($gameId, $playerId, $playerName, $playerCount = 4) {
+    public function initializeGame($gameId, $playerId, $playerName, $playerCount = 4)
+    {
         return $this->sendCommand('initialize_game', [
             'game_id' => $gameId,
             'player_id' => $playerId,

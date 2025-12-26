@@ -1,0 +1,20 @@
+# Project specific logs
+/logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment/OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+/node_modules/
+/vendor/
+
+# Local configuration/Environment
+.env
+config.local.php

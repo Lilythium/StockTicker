@@ -6,6 +6,9 @@
  */
 
 // Get the correct path to includes
+use includes\GameClient;
+use includes\SessionManager;
+
 $includePath = dirname(__FILE__) . '/../includes/';
 
 require_once $includePath . 'SessionManager.php';

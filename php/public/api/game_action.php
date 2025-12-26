@@ -3,6 +3,10 @@
  * game_action.php
  * Handles Buy, Sell, Roll, and Done Trading logic
  */
+
+use includes\GameClient;
+use includes\SessionManager;
+
 require_once '../../includes/SessionManager.php';
 require_once '../../includes/GameClient.php';
 

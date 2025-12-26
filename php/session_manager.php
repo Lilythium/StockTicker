@@ -1,4 +1,7 @@
 <?php
+
+use includes\GameClient;
+
 /**
  * SessionManager.php
  * Handles player sessions and game state tracking
@@ -91,7 +94,8 @@ class SessionManager {
     /**
      * Get all session data (for debugging)
      */
-    public function getSessionData() {
+    public function getSessionData(): array
+    {
         return [
             'game_id' => $this->getGameId(),
             'player_id' => $this->getPlayerId(),
@@ -101,11 +105,37 @@ class SessionManager {
         ];
     }
 
-    public function isSessionExpired() {
+    /**
+     * Check if session is expired
+     * Only expires if NOT in an active game
+     */
+    public function isSessionExpired(): bool
+    {
         if (!isset($_SESSION['joined_at'])) {
             return true;
         }
 
+        // Don't expire if player is in an active game
+        if ($this->isInGame()) {
+            require_once __DIR__ . '/includes/GameClient.php';
+            $client = new GameClient();
+            $gameId = $this->getGameId();
+
+            if ($gameId) {
+                $response = $client->getGameState($gameId);
+                if (isset($response['success']) && $response['success']) {
+                    $gameState = $response['data'] ?? [];
+                    $status = $gameState['status'] ?? 'waiting';
+
+                    // Don't expire if game is active or waiting
+                    if ($status === 'active' || $status === 'waiting') {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Otherwise, check timeout
         $timeout = 3600; // 1 hour
         return (time() - $_SESSION['joined_at']) > $timeout;
     }
@@ -124,7 +154,9 @@ class SessionManager {
         unset($_SESSION['done_trading_time']);
     }
 
-    // Update the leaveGame method to also reset done trading
+    /**
+     * Leave the current game
+     */
     public function leaveGame() {
         unset($_SESSION['game_id']);
         unset($_SESSION['player_id']);
@@ -132,5 +164,6 @@ class SessionManager {
         unset($_SESSION['joined_at']);
         unset($_SESSION['done_trading']);
         unset($_SESSION['done_trading_time']);
+        unset($_SESSION['is_first_player']);
     }
 }

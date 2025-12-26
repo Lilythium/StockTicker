@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - Debug Tool</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+        }
+        h1 { color: #00ff00; }
+        .test-section {
+            background: #2d2d2d;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #00ff00;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .output {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error { color: #ff0000; }
+        .success { color: #00ff00; }
+        .info { color: #00aaff; }
+        input {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            width: 300px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            color: #00aaff;
+        }
+    </style>
+</head>
+<body>
+<h1>🔧 Stock Ticker API Test Tool</h1>
+<p>Use this page to test if your API endpoints are working correctly.</p>
+
+<div class="test-section">
+    <h2>📋 Configuration</h2>
+    <label>Game ID:</label>
+    <input type="text" id="testGameId" value="test123" placeholder="Enter game ID">
+    <label>Player Slot (for trades/rolls):</label>
+    <input type="number" id="testPlayerSlot" value="0" min="0" max="3">
+</div>
+
+<div class="test-section">
+    <h2>🧪 Test 1: Check State</h2>
+    <p>Tests the lightweight polling endpoint (check_state.php)</p>
+    <button onclick="testCheckState()">Run Test</button>
+    <div class="output" id="output1">Ready...</div>
+</div>
+
+<div class="test-section">
+    <h2>🧪 Test 2: Get Full State</h2>
+    <p>Tests the full game state endpoint (get_game_state.php)</p>
+    <button onclick="testFullState()">Run Test</button>
+    <div class="output" id="output2">Ready...</div>
+</div>
+
+<div class="test-section">
+    <h2>🧪 Test 3: API Endpoint</h2>
+    <p>Tests the game action API (api/game_action.php)</p>
+    <button onclick="testAPIEndpoint()">Run Test</button>
+    <div class="output" id="output3">Ready...</div>
+</div>
+
+<div class="test-section">
+    <h2>🧪 Test 4: Start Game</h2>
+    <p>Tests starting a game via API (requires host privileges)</p>
+    <button onclick="testStartGame()">Run Test</button>
+    <div class="output" id="output4">Ready...</div>
+</div>
+
+<div class="test-section">
+    <h2>📊 All Tests</h2>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="clearAll()">Clear All</button>
+</div>
+
+<script>
+    function log(outputId, message, type = 'info') {
+        const output = document.getElementById(outputId);
+        const timestamp = new Date().toLocaleTimeString();
+        const className = type;
+        output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function clearOutput(outputId) {
+        document.getElementById(outputId).innerHTML = 'Running test...\n';
+    }
+
+    async function testCheckState() {
+        clearOutput('output1');
+        const gameId = document.getElementById('testGameId').value;
+
+        try {
+            log('output1', `Testing: check_state.php?game_id=${gameId}`);
+
+            const response = await fetch(`check_state.php?game_id=${encodeURIComponent(gameId)}`);
+            log('output1', `Response status: ${response.status}`, response.ok ? 'success' : 'error');
+
+            const data = await response.json();
+            log('output1', `Response data:\n${JSON.stringify(data, null, 2)}`, data.success ? 'success' : 'error');
+
+        } catch (error) {
+            log('output1', `ERROR: ${error.message}`, 'error');
+            log('output1', `Stack: ${error.stack}`, 'error');
+        }
+    }
+
+    async function testFullState() {
+        clearOutput('output2');
+        const gameId = document.getElementById('testGameId').value;
+
+        try {
+            log('output2', `Testing: get_game_state.php?game_id=${gameId}`);
+
+            const response = await fetch(`get_game_state.php?game_id=${encodeURIComponent(gameId)}`);
+            log('output2', `Response status: ${response.status}`, response.ok ? 'success' : 'error');
+
+            const data = await response.json();
+            log('output2', `Response data:\n${JSON.stringify(data, null, 2)}`, data.success ? 'success' : 'error');
+
+        } catch (error) {
+            log('output2', `ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function testAPIEndpoint() {
+        clearOutput('output3');
+        const gameId = document.getElementById('testGameId').value;
+
+        try {
+            log('output3', 'Testing: api/game_action.php (get_state action)');
+
+            const response = await fetch('api/game_action.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_state',
+                    params: {}
+                })
+            });
+
+            log('output3', `Response status: ${response.status}`, response.ok ? 'success' : 'error');
+
+            const data = await response.json();
+            log('output3', `Response data:\n${JSON.stringify(data, null, 2)}`, data.success ? 'success' : 'error');
+
+        } catch (error) {
+            log('output3', `ERROR: ${error.message}`, 'error');
+            log('output3', 'Make sure api/game_action.php exists in public/api/', 'error');
+        }
+    }
+
+    async function testStartGame() {
+        clearOutput('output4');
+
+        try {
+            log('output4', 'Testing: Start Game via API');
+            log('output4', 'NOTE: This will only work if you are the host of the game');
+
+            const response = await fetch('api/game_action.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'start_game',
+                    params: {
+                        settings: {
+                            max_rounds: 15,
+                            trading_duration: 2,
+                            dice_duration: 15,
+                            starting_cash: 5000
+                        }
+                    }
+                })
+            });
+
+            log('output4', `Response status: ${response.status}`, response.ok ? 'success' : 'error');
+
+            const data = await response.json();
+            log('output4', `Response data:\n${JSON.stringify(data, null, 2)}`, data.success ? 'success' : 'error');
+
+            if (!data.success && data.error) {
+                log('output4', `Error message: ${data.error}`, 'error');
+            }
+
+        } catch (error) {
+            log('output4', `ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function runAllTests() {
+        await testCheckState();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await testFullState();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await testAPIEndpoint();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('All tests completed');
+    }
+
+    function clearAll() {
+        ['output1', 'output2', 'output3', 'output4'].forEach(id => {
+            document.getElementById(id).innerHTML = 'Ready...\n';
+        });
+    }
+
+    // Auto-detect game ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameParam = urlParams.get('game');
+    if (gameParam) {
+        document.getElementById('testGameId').value = gameParam;
+    }
+</script>
+</body>
+</html>

@@ -5,6 +5,9 @@
  * Location: /public/leave_game.php
  */
 
+use includes\GameClient;
+use includes\SessionManager;
+
 require_once '../includes/SessionManager.php';
 require_once '../includes/GameClient.php';
 

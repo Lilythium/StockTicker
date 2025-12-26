@@ -5,6 +5,9 @@
  * Location: /public/check_state.php
  */
 
+use includes\GameClient;
+use includes\SessionManager;
+
 $includePath = dirname(__FILE__) . '/../includes/';
 require_once $includePath . 'SessionManager.php';
 require_once $includePath . 'GameClient.php';
