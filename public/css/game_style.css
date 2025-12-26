@@ -437,7 +437,7 @@
 }
 
 /* --- Roll Column --- */
-.column-roll { align-items: center; text-align: center; }
+.column-roll { align-items: center; text-align: center; padding: 10px;}
 
 .btn-roll-ready {
     background: #f1c40f !important;

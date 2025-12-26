@@ -28,9 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $action = $_POST['action'] ?? '';
 
 // 3. Get Current Player Slot
-// We need to know which slot (0, 1, 2, 3) the current player is in
-$stateParams = $client->getGameState($gameId);
-$gameState = $stateParams['data'] ?? [];
+$stateResponse = $client->getGameState($gameId);
+$gameState = $stateResponse['data'] ?? [];
 $playerSlot = null;
 
 if (isset($gameState['players'])) {
@@ -49,7 +48,7 @@ if ($playerSlot === null) {
 
 // 4. Prepare Parameters
 $params = [
-    'player' => (int)$playerSlot, // The game engine expects the slot number
+    'player' => (int)$playerSlot,
     'game_id' => $gameId
 ];
 
@@ -68,33 +67,52 @@ if ($action === 'buy_shares' || $action === 'sell_shares') {
 try {
     $response = $client->sendCommand($action, $params);
 
-    // 1. Check for explicit errors first
+    // Check for errors
     if (isset($response['error']) && $response['error']) {
         echo json_encode(['success' => false, 'error' => $response['error']]);
         exit;
     }
 
-    // 2. Identify where the dice data lives
-    // Some engines return it in $response['data'], others in $response['result']
-    $dataContainer = $response['data'] ?? $response['result'] ?? [];
+    if (!isset($response['success']) || !$response['success']) {
+        echo json_encode(['success' => false, 'error' => 'Action failed']);
+        exit;
+    }
 
+    // Handle roll_dice specifically
     if ($action === 'roll_dice') {
-        // Log the response to your server error log to see the real structure if this fails
-        // error_log("Roll Response: " . print_r($response, true));
+        $rollData = $response['data'] ?? [];
 
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'stock'  => $dataContainer['stock']  ?? '',
-                'action' => $dataContainer['action'] ?? '',
-                'amount' => $dataContainer['amount'] ?? 0
-            ]
-        ]);
+        // Check if dice data exists
+        if (isset($rollData['dice'])) {
+            // New format: dice data in 'dice' key
+            $diceInfo = $rollData['dice'];
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'stock' => $diceInfo['stock'] ?? '',
+                    'action' => $diceInfo['action'] ?? '',
+                    'amount' => $diceInfo['amount'] ?? 0
+                ]
+            ]);
+        } else {
+            // Fallback: return success but no dice data
+            // JS will wait for poller to catch it
+            echo json_encode([
+                'success' => true,
+                'data' => []
+            ]);
+        }
     } else {
         // Standard success for Buy/Sell/Done
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Action completed successfully'
+        ]);
     }
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
 }

@@ -1,13 +1,11 @@
 <?php
 /**
  * Lightweight state checker for AJAX polling
- * Returns minimal info + dice results + auto_roll_needed flag
+ * Returns key game state changes and player data
  * Location: /public/check_state.php
  */
 
-// Get the correct path to includes
 $includePath = dirname(__FILE__) . '/../includes/';
-
 require_once $includePath . 'SessionManager.php';
 require_once $includePath . 'GameClient.php';
 
@@ -30,7 +28,6 @@ try {
     $client = new GameClient();
     $response = $client->getGameState($gameId);
 
-    // Check if response is valid
     if (!isset($response['success']) || !$response['success']) {
         echo json_encode([
             'success' => false,
@@ -41,7 +38,23 @@ try {
 
     $gameState = $response['data'] ?? [];
 
-    // Return key fields that indicate state changes
+    // Build player summary for cards update
+    $playerSummaries = [];
+    if (isset($gameState['players'])) {
+        foreach ($gameState['players'] as $slot => $player) {
+            if ($player['is_active']) {
+                $playerSummaries[] = [
+                    'slot' => $slot,
+                    'name' => $player['name'],
+                    'cash' => $player['cash'],
+                    'portfolio' => $player['portfolio'],
+                    'done_trading' => $player['done_trading'] ?? false
+                ];
+            }
+        }
+    }
+
+    // Return comprehensive state snapshot
     $stateSnapshot = [
         'success' => true,
         'phase' => $gameState['current_phase'] ?? 'trading',
@@ -55,7 +68,8 @@ try {
             'stocks' => $gameState['stocks'] ?? [],
             'game_over' => $gameState['game_over'] ?? false,
             'auto_roll_needed' => $gameState['auto_roll_needed'] ?? false,
-            'trading_complete' => $gameState['trading_complete'] ?? false
+            'trading_complete' => $gameState['trading_complete'] ?? false,
+            'players' => $playerSummaries
         ]
     ];
 
