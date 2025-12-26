@@ -22,11 +22,16 @@ if ($session->isSessionExpired()) {
 $gameId = $session->getGameId();
 $playerId = $session->getPlayerId();
 $playerName = $session->getPlayerName();
-$isFirstPlayer = $session->isFirstPlayer();
 
 $client = new GameClient();
 $response = $client->getGameState($gameId);
 $gameState = $response['data'] ?? [];
+
+// Determine if this player is the host from game state
+$isFirstPlayer = false;
+if (isset($gameState['host_player_id']) && $gameState['host_player_id'] === $playerId) {
+    $isFirstPlayer = true;
+}
 
 // Check if game is over
 if (isset($gameState['game_over']) && $gameState['game_over']) {
@@ -124,6 +129,8 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                 <div class="player-list">
                     <?php
                     $slotsFilled = 0;
+                    $hostPlayerId = $gameState['host_player_id'] ?? null;
+
                     if (isset($gameState['players'])):
                         foreach ($gameState['players'] as $slot => $player):
                             if (!empty($player['player_id'])):
@@ -135,7 +142,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                                     $playerName = $player['name'];
                                 }
 
-                                $isHost = $slotsFilled === 1;
+                                $isHost = ($player['player_id'] === $hostPlayerId);
                                 $itemClass = 'player-item' . ($isYou ? ' you' : '') . ($isHost ? ' host' : '');
                                 ?>
                                 <div class="<?= $itemClass ?>">
@@ -194,6 +201,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                 <label>Max Rounds: <span id="val_rounds"><?= $defaultMaxRounds ?></span></label>
                 <input type="range"
                        id="range_max_rounds"
+                       name="max_rounds"
                        min="1" max="50"
                        value="<?= $defaultMaxRounds ?>"
                        class="retro-slider"
@@ -204,6 +212,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                 <label>Trading Timer: <span id="val_trading"><?= $defaultTradingDuration ?></span> min</label>
                 <input type="range"
                        id="range_trading_duration"
+                       name="trading_duration"
                        min="1" max="10"
                        value="<?= $defaultTradingDuration ?>"
                        class="retro-slider"
@@ -214,6 +223,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                 <label>Dice Timer: <span id="val_dice"><?= $defaultDiceDuration ?></span> sec</label>
                 <input type="range"
                        id="range_dice_duration"
+                       name="dice_duration"
                        min="0" max="30"
                        value="<?= $defaultDiceDuration ?>"
                        class="retro-slider"
@@ -225,6 +235,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                 <label>Starting Cash: <span id="val_cash">$<?= number_format($defaultStartingCash) ?></span></label>
                 <input type="range"
                        id="range_starting_cash"
+                       name="starting_cash"
                        min="500" max="20000" step="500"
                        value="<?= $defaultStartingCash ?>"
                        class="retro-slider"
@@ -241,43 +252,6 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
     window.gameId = <?= json_encode($gameId) ?>;
     window.playerId = <?= json_encode($playerId) ?>;
     window.isFirstPlayer = <?= $isFirstPlayer ? 'true' : 'false' ?>;
-
-    // Function to update hidden form inputs and display
-    function updateSetting(name, value) {
-        // Update hidden input
-        const hiddenInput = document.getElementById('hidden_' + name);
-        if (hiddenInput) {
-            hiddenInput.value = value;
-        }
-
-        // Update display
-        if (name === 'max_rounds') {
-            document.getElementById('val_rounds').innerText = value;
-        } else if (name === 'trading_duration') {
-            document.getElementById('val_trading').innerText = value;
-        } else if (name === 'dice_duration') {
-            document.getElementById('val_dice').innerText = value;
-        } else if (name === 'starting_cash') {
-            document.getElementById('val_cash').innerText = '$' + Number(value).toLocaleString();
-        }
-    }
-
-    function resetSettings() {
-        const defaults = {
-            'max_rounds': 15,
-            'trading_duration': 2,
-            'dice_duration': 15,
-            'starting_cash': 5000
-        };
-
-        for (const [name, value] of Object.entries(defaults)) {
-            const rangeInput = document.getElementById('range_' + name);
-            if (rangeInput) {
-                rangeInput.value = value;
-                updateSetting(name, value);
-            }
-        }
-    }
 </script>
 <script src="js/waiting_room.js"></script>
 </body>

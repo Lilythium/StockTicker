@@ -61,6 +61,10 @@ class GameState:
             4: 10, 5: 20, 6: 20
         }
 
+    def format_money(self, amount):
+        """Format money consistently with thousands separator"""
+        return f"${amount:,.2f}"
+
     def add_history_entry(self, entry_type, message):
         """Add an entry to the game history"""
         timestamp = time.time()
@@ -150,6 +154,23 @@ class GameState:
 
         return {"success": True, "slot": slot, "name": player_name, "player_name": player_name}
 
+    def reassign_host(self):
+        """Reassign host to the next available connected player"""
+        if not self.player_names:
+            # No players left
+            self.first_player_id = None
+            return None
+
+        # Get list of connected player IDs sorted by join order
+        # The first one in player_names will be the new host
+        new_host_id = next(iter(self.player_names))
+        self.first_player_id = new_host_id
+
+        new_host_name = self.player_names[new_host_id]["name"]
+        self.add_history_entry('system', f"{new_host_name} is now the host")
+
+        return new_host_id
+
     def remove_player(self, php_player_id):
         """Remove a player's session but keep them in game as AI"""
         if php_player_id not in self.player_names:
@@ -158,6 +179,7 @@ class GameState:
         player_info = self.player_names[php_player_id]
         player_name = player_info["name"]
         player_slot = player_info["slot"]
+        was_host = (php_player_id == self.first_player_id)
 
         # Mark player as disconnected
         self.player_left_flags[player_slot] = True
@@ -170,6 +192,10 @@ class GameState:
 
         self.add_history_entry('system', f"{player_name} disconnected (now auto-playing)")
 
+        # Reassign host if the host left
+        if was_host and self.game_status == "waiting":
+            self.reassign_host()
+
         # Auto-mark done trading if in trading phase
         if self.current_phase == "trading":
             self.done_trading.add(player_slot)
@@ -180,7 +206,8 @@ class GameState:
                 return {
                     "success": True,
                     "message": f"{player_name} left. Trading phase complete!",
-                    "phase_changed": True
+                    "phase_changed": True,
+                    "new_host": self.first_player_id if was_host else None
                 }
 
         # Check active players (those still connected)
@@ -198,7 +225,8 @@ class GameState:
 
         return {
             "success": True,
-            "message": f"{player_name} disconnected. Their player will continue automatically."
+            "message": f"{player_name} disconnected. Their player will continue automatically.",
+            "new_host": self.first_player_id if was_host else None
         }
 
     def get_active_slots(self):
@@ -354,7 +382,7 @@ class GameState:
             "networth": winner_networth
         }
 
-        self.add_history_entry('phase', f"🏆 Game Over! {winner_name} wins with ${winner_networth:,.2f}!")
+        self.add_history_entry('phase', f"🏆 Game Over! {winner_name} wins with {self.format_money(winner_networth)}!")
 
     def advance_dice_turn(self):
         """Move to next player's turn in dice phase"""
@@ -404,8 +432,25 @@ class GameState:
         result = self.handle_dice_roll(stock, action, amount)
 
         player_name = self.get_player_name(self.current_turn)
+
+        # Create history message based on action
         if action == 'div':
-            history_msg = f"🎲 {player_name} rolled: {stock} paid ${amount / 100:.2f} dividend per share"
+            # Check stock price and ownership for dividend message
+            if self.stocks[stock] <= 1.00:
+                history_msg = f"🎲 {player_name} rolled: {stock} dividend - dividends not payable."
+            else:
+                # Find players who own this stock
+                owners = []
+                for slot in self.get_active_slots():
+                    slot_str = str(slot)
+                    if self.players[slot_str]['portfolio'][stock] > 0:
+                        owners.append(self.get_player_name(slot))
+
+                if owners:
+                    owners_list = ", ".join(owners)
+                    history_msg = f"🎲 {player_name} rolled: {stock} paid ${amount / 100:.2f} dividend per share - dividends paid to: {owners_list}"
+                else:
+                    history_msg = f"🎲 {player_name} rolled: {stock} dividend - Nobody owns {stock}."
         elif action == 'up':
             history_msg = f"🎲 {player_name} rolled: {stock} moved UP {amount}¢"
         else:
@@ -425,11 +470,23 @@ class GameState:
     def handle_dice_roll(self, stock, action, amount):
         """Apply dice roll effects to game state"""
         if action == "div":
+            # Check if stock price is above $1.00 before paying dividends
+            if self.stocks[stock] <= 1.00:
+                return f'{stock} dividend not payable (price at or below $1.00)'
+
+            # Pay dividends only if stock price > $1.00
+            dividend_paid = False
             for slot in self.get_active_slots():
                 slot_str = str(slot)
                 shares = self.players[slot_str]['portfolio'][stock]
-                dividend = shares * (amount / 100)
-                self.players[slot_str]['cash'] += dividend
+                if shares > 0:
+                    dividend = shares * (amount / 100)
+                    self.players[slot_str]['cash'] += dividend
+                    dividend_paid = True
+
+            if not dividend_paid:
+                return f'{stock} dividend declared but nobody owns shares'
+
             return f'{stock} paid ${amount / 100:.2f} dividend per share'
 
         change = amount if action == "up" else -amount
@@ -560,7 +617,8 @@ class GameState:
             "winner": self.winner,
             "networth_history": self.networth_history,
             "final_rankings": self.get_final_rankings() if self.game_over else [],
-            "player_count": self.player_count
+            "player_count": self.player_count,
+            "host_player_id": self.first_player_id
         }
 
     def buy_shares(self, player, stock, amount):

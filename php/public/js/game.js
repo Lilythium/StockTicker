@@ -11,6 +11,20 @@ let rollLockTimeout = null;
 let lastPlayerStates = {};
 let lastDoneCount = 0;
 
+// Dice roll queue to prevent skipped rolls
+let diceRollQueue = [];
+let isProcessingRoll = false;
+
+/* ===== HELPER FUNCTIONS ===== */
+function formatMoney(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
+
 /* ===== INITIALIZATION ===== */
 document.addEventListener('DOMContentLoaded', function() {
     initializeStockPrices();
@@ -33,8 +47,9 @@ function initializeStockPrices() {
     priceMarkers.forEach(marker => {
         const cell = marker.closest('.price-cell');
         const stock = cell.getAttribute('data-stock');
-        const priceText = marker.textContent.replace('$', '');
-        stockPrices[stock] = parseFloat(priceText);
+        const priceInCents = parseFloat(marker.textContent);
+        // Convert cents to dollars
+        stockPrices[stock] = priceInCents / 100;
     });
 }
 
@@ -59,7 +74,7 @@ async function checkGameState() {
             return;
         }
 
-        // 2. Detect New Dice Roll
+        // 2. Detect New Dice Roll and queue it
         if (data.data && data.data.dice_results) {
             const currentDiceResults = JSON.stringify(data.data.dice_results);
 
@@ -67,9 +82,8 @@ async function checkGameState() {
                 lastDiceResults = currentDiceResults;
                 const [stock, action, amount] = data.data.dice_results;
 
-                showRollAnimation(stock, action, amount, () => {
-                    setTimeout(() => location.reload(), 1000);
-                });
+                // Add to queue instead of processing immediately
+                queueDiceRoll(stock, action, amount);
                 return;
             }
             if (isFirstPoll) lastDiceResults = currentDiceResults;
@@ -94,6 +108,33 @@ async function checkGameState() {
     }
 }
 
+/* ===== DICE ROLL QUEUE SYSTEM ===== */
+function queueDiceRoll(stock, action, amount) {
+    diceRollQueue.push({ stock, action, amount });
+    processNextRoll();
+}
+
+function processNextRoll() {
+    // If already processing or queue is empty, do nothing
+    if (isProcessingRoll || diceRollQueue.length === 0) return;
+
+    isProcessingRoll = true;
+    const roll = diceRollQueue.shift();
+
+    showRollAnimation(roll.stock, roll.action, roll.amount, () => {
+        isProcessingRoll = false;
+
+        // Check if there are more rolls in the queue
+        if (diceRollQueue.length > 0) {
+            // Process next roll immediately
+            setTimeout(() => processNextRoll(), 500);
+        } else {
+            // Queue is empty, reload page
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+}
+
 /* ===== DYNAMIC UI UPDATES ===== */
 async function updatePlayerCards() {
     try {
@@ -112,10 +153,10 @@ async function updatePlayerCards() {
             const playerCard = findPlayerCard(player.name);
             if (!playerCard) return;
 
-            // Update cash
+            // Update cash with consistent formatting
             const cashEl = playerCard.querySelector('.player-cash');
             if (cashEl) {
-                cashEl.textContent = `$${player.cash.toFixed(2)}`;
+                cashEl.textContent = formatMoney(player.cash);
             }
 
             // Update portfolio
@@ -129,7 +170,7 @@ async function updatePlayerCards() {
                         <tr>
                             <td class="stock-name">${stock}</td>
                             <td class="stock-qty">${qty.toLocaleString()} <small>SHRS</small></td>
-                            <td class="stock-val">$${value.toFixed(2)}</td>
+                            <td class="stock-val">${formatMoney(value)}</td>
                         </tr>
                     `;
                 }
@@ -239,17 +280,15 @@ async function performGameAction(action, params = {}) {
             const roll = data.data;
 
             if (roll && roll.stock) {
-                // Server returned dice data immediately
-                showRollAnimation(roll.stock, roll.action, roll.amount, () => {
-                    location.reload();
-                });
+                // Server returned dice data immediately - queue it
+                queueDiceRoll(roll.stock, roll.action, roll.amount);
             } else {
                 // Wait for poller to catch the roll
                 console.log('Waiting for dice results from server...');
 
                 // Safety timeout - reload if animation doesn't start
                 rollLockTimeout = setTimeout(() => {
-                    if (!animationInProgress) {
+                    if (!animationInProgress && diceRollQueue.length === 0) {
                         console.log('Roll timeout - reloading');
                         location.reload();
                     }
@@ -274,6 +313,23 @@ async function performGameAction(action, params = {}) {
 }
 
 /* ===== TRADING & FORMS ===== */
+function resetTradeForm() {
+    const stockSelect = document.getElementById('stockSelect');
+    const amountInput = document.querySelector('.amount-input');
+
+    if (stockSelect) {
+        stockSelect.value = 'Gold';
+    }
+
+    if (amountInput) {
+        amountInput.value = '500';
+    }
+
+    // Trigger update to recalculate cost
+    const event = new Event('change');
+    if (stockSelect) stockSelect.dispatchEvent(event);
+}
+
 function initializeTradingForm() {
     const stockSelect = document.getElementById('stockSelect');
     const amountInput = document.querySelector('.amount-input');
@@ -321,8 +377,9 @@ function initializeTradingForm() {
         const stock = stockSelect.value;
         const amount = parseInt(amountInput.value) || 0;
         const price = stockPrices[stock] || 1.00;
-        const cost = amount / 100 * price;
-        costDisplay.value = `COST: $${cost.toFixed(2)}`;
+        // Fixed: amount is already in shares, price is in dollars
+        const cost = amount * price;
+        costDisplay.value = `COST: ${formatMoney(cost)}`;
         highlightActiveButton();
     }
 
@@ -335,14 +392,14 @@ function initializeTradingForm() {
             const stock = stockSelect.value;
             const amount = parseInt(amountInput.value) || 0;
             const price = stockPrices[stock] || 1.00;
-            const cost = amount / 100 * price;
+            const cost = amount * price;
             const playerCash = window.currentPlayerCash || 0;
             const playerShares = window.currentPlayerShares || {};
 
             // Validate
             if (action === 'buy_shares') {
                 if (cost > playerCash) {
-                    showError(`Not enough cash! You need $${cost.toFixed(2)} but only have $${playerCash.toFixed(2)}`);
+                    showError(`Not enough cash! You need ${formatMoney(cost)} but only have ${formatMoney(playerCash)}`);
                     return;
                 }
             } else if (action === 'sell_shares') {
@@ -353,10 +410,14 @@ function initializeTradingForm() {
                 }
             }
 
+            // Reset form to defaults after successful submission
             await performGameAction(action, {
                 stock: stock,
                 amount: amount
             });
+
+            // Reset will happen on page reload, so this is just for safety
+            resetTradeForm();
         });
     }
 
@@ -604,7 +665,7 @@ async function revealWhenReady(stock, action, amount, callback) {
         if (text) {
             text.classList.add('reveal-text');
             if (action.toUpperCase() === "DIV") {
-                if (stockPrices[stock] > 100) {
+                if (stockPrices[stock] > 1.00) {
                     text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
                 } else {
                     text.innerText = `Dividends for ${stock} not payable.`;

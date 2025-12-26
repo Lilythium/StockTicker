@@ -10,6 +10,7 @@ let lastGameStatus = 'waiting';
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeWaitingRoom();
+    loadSavedSettings();
 });
 
 function initializeWaitingRoom() {
@@ -19,6 +20,49 @@ function initializeWaitingRoom() {
 
     // Start polling
     startAutoRefresh();
+
+    // Add event listeners to save settings when changed
+    const settingInputs = document.querySelectorAll('input[name="max_rounds"], input[name="trading_duration"], input[name="dice_duration"], input[name="starting_cash"]');
+    settingInputs.forEach(input => {
+        input.addEventListener('input', saveCurrentSettings);
+    });
+}
+
+function saveCurrentSettings() {
+    const settings = {
+        max_rounds: document.querySelector('input[name="max_rounds"]')?.value || 15,
+        trading_duration: document.querySelector('input[name="trading_duration"]')?.value || 2,
+        dice_duration: document.querySelector('input[name="dice_duration"]')?.value || 15,
+        starting_cash: document.querySelector('input[name="starting_cash"]')?.value || 5000
+    };
+
+    localStorage.setItem('hostSettings', JSON.stringify(settings));
+}
+
+function loadSavedSettings() {
+    const saved = localStorage.getItem('hostSettings');
+    if (!saved) return;
+
+    try {
+        const settings = JSON.parse(saved);
+
+        // Apply saved settings to sliders
+        for (const [name, value] of Object.entries(settings)) {
+            const rangeInput = document.getElementById('range_' + name);
+            const hiddenInput = document.getElementById('hidden_' + name);
+
+            if (rangeInput) {
+                rangeInput.value = value;
+                updateSetting(name, value);
+            }
+
+            if (hiddenInput) {
+                hiddenInput.value = value;
+            }
+        }
+    } catch (e) {
+        console.error('Error loading saved settings:', e);
+    }
 }
 
 function toggleAutoRefresh() {
@@ -163,13 +207,45 @@ function resetSettings() {
     };
 
     for (const [name, value] of Object.entries(defaults)) {
-        const input = document.querySelector(`input[name="${name}"]`);
-        if (input) {
-            input.value = value;
-            // Trigger input event to update display
+        const rangeInput = document.getElementById('range_' + name);
+        const hiddenInput = document.getElementById('hidden_' + name);
+
+        if (rangeInput) {
+            rangeInput.value = value;
+            // Trigger the input event to update display
             const event = new Event('input', { bubbles: true });
-            input.dispatchEvent(event);
+            rangeInput.dispatchEvent(event);
         }
+
+        if (hiddenInput) {
+            hiddenInput.value = value;
+        }
+    }
+
+    // Clear saved settings
+    localStorage.removeItem('hostSettings');
+}
+
+function updateSetting(name, value) {
+    // Update hidden input
+    const hiddenInput = document.getElementById('hidden_' + name);
+    if (hiddenInput) {
+        hiddenInput.value = value;
+    }
+
+    // Update display
+    if (name === 'max_rounds') {
+        const display = document.getElementById('val_rounds');
+        if (display) display.innerText = value;
+    } else if (name === 'trading_duration') {
+        const display = document.getElementById('val_trading');
+        if (display) display.innerText = value;
+    } else if (name === 'dice_duration') {
+        const display = document.getElementById('val_dice');
+        if (display) display.innerText = value;
+    } else if (name === 'starting_cash') {
+        const display = document.getElementById('val_cash');
+        if (display) display.innerText = '$' + Number(value).toLocaleString();
     }
 }
 
@@ -178,3 +254,4 @@ window.toggleAutoRefresh = toggleAutoRefresh;
 window.confirmStart = confirmStart;
 window.copyGameLink = copyGameLink;
 window.resetSettings = resetSettings;
+window.updateSetting = updateSetting;
