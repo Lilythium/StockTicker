@@ -32,7 +32,10 @@ class GameEngine:
 
                 # Auto-roll if needed (player disconnected or timer expired)
                 if game.current_phase == "dice" and game.check_auto_roll_needed():
-                    game.roll_dice()
+                    logger.info(f"Auto-roll triggered for game {game_id}, turn {game.current_turn}")
+                    auto_roll_result = game.perform_auto_roll()
+                    if auto_roll_result:
+                        logger.info(f"Auto-roll completed: {auto_roll_result.get('dice', {})}")
 
                 return {"success": True, "data": game.get_game_state()}
 
@@ -169,3 +172,4 @@ class GameEngine:
 
 if __name__ == "__main__":
     GameEngine().start(port=9999)
+    

@@ -46,7 +46,8 @@ if (empty($rankings)) {
                     'name' => $player['name'],
                     'net_worth' => $player['net_worth'],
                     'cash' => $player['cash'],
-                    'portfolio' => $player['portfolio']
+                    'portfolio' => $player['portfolio'],
+                    'was_disconnected' => $player['has_left'] ?? false
             ];
         }
     }
@@ -89,6 +90,7 @@ $networthHistory = $gameState['networth_history'] ?? [];
                 foreach ($rankings as $player):
                     $isYou = ($playerId && $player['player_id'] === $playerId);
                     $rankClass = ($rank <= 3) ? "rank-$rank" : "";
+                    $wasDisconnected = $player['was_disconnected'] ?? false;
                     ?>
                     <div class="player-rank-card <?= $rankClass ?> <?= $isYou ? 'is-you' : '' ?>">
                         <div class="rank-number"><?= $rank ?></div>
@@ -96,6 +98,7 @@ $networthHistory = $gameState['networth_history'] ?? [];
                             <span class="player-name">
                                 <?= htmlspecialchars($player['name']) ?>
                                 <?php if ($isYou): ?><span class="you-pill">you</span><?php endif; ?>
+                                <?php if ($wasDisconnected): ?><span class="disconnected-pill">disconnected</span><?php endif; ?>
                             </span>
                             <span class="player-worth">$<?= number_format($player['net_worth'], 2) ?></span>
                         </div>

@@ -27,6 +27,13 @@ $client = new GameClient();
 $response = $client->getGameState($gameId);
 $gameState = $response['data'] ?? [];
 
+// Check for rejoin message
+$rejoinMessage = '';
+if (isset($_SESSION['rejoin_message'])) {
+    $rejoinMessage = $_SESSION['rejoin_message'];
+    unset($_SESSION['rejoin_message']);
+}
+
 // Determine if this player is the host from game state
 $isFirstPlayer = false;
 if (isset($gameState['host_player_id']) && $gameState['host_player_id'] === $playerId) {
@@ -105,6 +112,12 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
         <div class="game-info">
             <h1>Waiting Room</h1>
 
+            <?php if (!empty($rejoinMessage)): ?>
+                <div class="status-message" style="background: #2ecc71; color: white; margin-bottom: 15px;">
+                    🎮 <?= htmlspecialchars($rejoinMessage) ?>
+                </div>
+            <?php endif; ?>
+
             <div class="game-id-display">
                 <div class="game-id-label">Game ID</div>
                 <div class="game-id-value"><?= htmlspecialchars($gameId) ?></div>
@@ -143,6 +156,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                                 }
 
                                 $isHost = ($player['player_id'] === $hostPlayerId);
+                                $isDisconnected = $player['has_left'] ?? false;
                                 $itemClass = 'player-item' . ($isYou ? ' you' : '') . ($isHost ? ' host' : '');
                                 ?>
                                 <div class="<?= $itemClass ?>">
@@ -150,6 +164,7 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
                                         <?= htmlspecialchars($player['name']) ?>
                                         <?php if ($isYou): ?><span class="player-badge you">You</span><?php endif; ?>
                                         <?php if ($isHost): ?><span class="player-badge host">Host</span><?php endif; ?>
+                                        <?php if ($isDisconnected): ?><span class="player-badge disconnected">Disconnected</span><?php endif; ?>
                                     </div>
                                     <div style="font-weight: bold;">Ready ✅</div>
                                 </div>

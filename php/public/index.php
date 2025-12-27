@@ -53,9 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stateResponse = $client->getGameState($gameId);
 
             if (!isset($stateResponse['success']) || !$stateResponse['success']) {
+                // Game doesn't exist - create it
                 $response = $client->initializeGame($gameId, $playerId, $playerName, $playerCount);
                 $isFirstPlayer = true;
             } else {
+                // Game exists - try to join (or rejoin)
                 $response = $client->joinGame($gameId, $playerId, $playerName);
                 $gameData = $stateResponse['data'] ?? [];
                 $existingPlayerCount = 0;
@@ -77,6 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Store rematch settings in session if this is a rematch
                 if ($isRematch && $rematchSettings) {
                     $_SESSION['rematch_settings'] = $rematchSettings;
+                }
+
+                // Check if this was a rejoin
+                $rejoined = $response['data']['rejoined'] ?? false;
+                if ($rejoined) {
+                    $_SESSION['rejoin_message'] = $response['data']['message'] ?? 'Welcome back!';
                 }
 
                 header("Location: waiting_room.php");
@@ -163,6 +171,7 @@ $defaultGameId = isset($_GET['game']) ? htmlspecialchars($_GET['game']) : $digit
                 <li>Start with <strong>$5,000</strong> cash on hand.</li>
                 <li>Trade in <strong>blocks of 500 shares</strong>.</li>
                 <li>Markets move based on <strong>dice rolls</strong>.</li>
+                <li><strong>Disconnected?</strong> You can rejoin anytime!</li>
             </ul>
         </div>
     </div>

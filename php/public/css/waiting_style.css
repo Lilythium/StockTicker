@@ -127,6 +127,7 @@ body {
 }
 .player-badge.you { background: var(--action-green); color: white; }
 .player-badge.host { background: var(--action-gold); color: var(--ink-black); }
+.player-badge.disconnected { background: #e74c3c; color: white; font-weight: bold; }
 
 .empty-slot {
     margin-bottom: 10px;

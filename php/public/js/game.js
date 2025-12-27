@@ -118,17 +118,37 @@ async function checkGameState() {
 
         // 2. Detect New Dice Roll and queue it
         if (data.data && data.data.dice_results) {
-            const currentDiceResults = JSON.stringify(data.data.dice_results);
+            const diceData = data.data.dice_results;
+            const currentRollId = diceData.roll_id;
 
-            if (currentDiceResults !== lastDiceResults && !isFirstPoll) {
-                lastDiceResults = currentDiceResults;
-                const [stock, action, amount] = data.data.dice_results;
+            console.log('Poll detected dice_results:', diceData);
+            console.log('Last roll_id:', lastDiceResults ? JSON.parse(lastDiceResults).roll_id : 'none');
+            console.log('Current roll_id:', currentRollId);
+            console.log('Is first poll?', isFirstPoll);
+
+            // Compare by roll_id to ensure we catch every unique roll
+            const lastRollId = lastDiceResults ? JSON.parse(lastDiceResults).roll_id : null;
+
+            if (currentRollId !== lastRollId && !isFirstPoll) {
+                lastDiceResults = JSON.stringify(diceData);
+                const stock = diceData.stock;
+                const action = diceData.action;
+                const amount = diceData.amount;
+
+                console.log('🎲 NEW ROLL DETECTED! (roll_id changed)', currentRollId, '- Queueing animation:', stock, action, amount);
 
                 // Add to queue instead of processing immediately
                 queueDiceRoll(stock, action, amount);
                 return;
             }
-            if (isFirstPoll) lastDiceResults = currentDiceResults;
+            if (isFirstPoll) {
+                console.log('First poll - setting lastDiceResults without animating');
+                lastDiceResults = JSON.stringify(diceData);
+            }
+        } else if (data.data && !data.data.dice_results) {
+            // Dice results cleared (between turns)
+            console.log('Dice results cleared - ready for next roll');
+            lastDiceResults = null;
         }
 
         // 3. Detect Phase Change

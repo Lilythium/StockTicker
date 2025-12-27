@@ -19,7 +19,8 @@ class GameState:
 
         # PLAYERS
         self.players = {}
-        self.player_names = {}
+        self.player_names = {}  # Active sessions: {player_id: {slot, name}}
+        self.player_id_slots = {}  # Persistent mapping: {player_id: slot} - tracks even when disconnected
         self.player_left_flags = {}  # Track which players have left
         self.first_player_id = None
         self.done_trading = set()
@@ -38,6 +39,7 @@ class GameState:
 
         # GAME STATE
         self.dice_results = None
+        self.roll_count = 0  # Counter to ensure each roll is unique
         self.game_status = "waiting"
         self.last_roll_time = None
         self.game_over = False
@@ -97,6 +99,7 @@ class GameState:
         """Initialize the player slots"""
         self.players.clear()
         self.player_names.clear()
+        self.player_id_slots.clear()
         self.player_left_flags.clear()
         self.first_player_id = None
         self.done_trading.clear()
@@ -120,10 +123,17 @@ class GameState:
             self.networth_history[slot_str] = []
 
     def add_player(self, php_player_id, player_name, requested_slot=None):
-        """Assigns a PHP client to a slot"""
-        if php_player_id in self.player_names:
-            return {"success": True, "slot": self.player_names[php_player_id]["slot"]}
+        """Assigns a PHP client to a slot - handles both new joins and rejoins"""
 
+        # Check if this player is already in the game (active session)
+        if php_player_id in self.player_names:
+            return {"success": True, "slot": self.player_names[php_player_id]["slot"], "rejoined": False}
+
+        # Check if this player was previously in the game (disconnected)
+        if php_player_id in self.player_id_slots:
+            return self.reconnect_player(php_player_id, player_name)
+
+        # New player joining
         existing_names = [info["name"] for info in self.player_names.values()]
         original_name = player_name
         counter = 2
@@ -147,12 +157,47 @@ class GameState:
             "name": player_name
         }
 
+        # Track this player_id -> slot mapping persistently
+        self.player_id_slots[php_player_id] = slot
+
         self.players[slot]["name"] = player_name
         self.player_left_flags[slot] = False
 
         self.add_history_entry('system', f"{player_name} joined the game")
 
-        return {"success": True, "slot": slot, "name": player_name, "player_name": player_name}
+        return {"success": True, "slot": slot, "name": player_name, "player_name": player_name, "rejoined": False}
+
+    def reconnect_player(self, php_player_id, player_name):
+        """Reconnect a previously disconnected player to their slot"""
+        slot = self.player_id_slots[php_player_id]
+        original_name = self.players[slot]["name"]
+
+        # Restore active session
+        self.player_names[php_player_id] = {
+            "slot": slot,
+            "name": original_name
+        }
+
+        # Clear disconnected flag
+        self.player_left_flags[slot] = False
+
+        # Remove from done_trading if they were auto-marked
+        self.done_trading.discard(slot)
+
+        # Reassign host if needed and game is waiting
+        if self.first_player_id is None and self.game_status == "waiting":
+            self.first_player_id = php_player_id
+
+        self.add_history_entry('system', f"{original_name} reconnected")
+
+        return {
+            "success": True,
+            "slot": slot,
+            "name": original_name,
+            "player_name": original_name,
+            "rejoined": True,
+            "message": f"Welcome back, {original_name}!"
+        }
 
     def reassign_host(self):
         """Reassign host to the next available connected player"""
@@ -172,7 +217,7 @@ class GameState:
         return new_host_id
 
     def remove_player(self, php_player_id):
-        """Remove a player's session but keep them in game as AI"""
+        """Remove a player's session but keep them in game as disconnected"""
         if php_player_id not in self.player_names:
             return {"success": False, "error": "Player not in game"}
 
@@ -187,28 +232,22 @@ class GameState:
         # Keep name in player data for history
         self.players[player_slot]["name"] = player_name
 
+        # Keep player_id -> slot mapping so they can rejoin
+        # (already in self.player_id_slots, so no need to add again)
+
         # Remove from active sessions
         del self.player_names[php_player_id]
 
-        self.add_history_entry('system', f"{player_name} disconnected (now auto-playing)")
+        self.add_history_entry('system', f"{player_name} disconnected")
 
         # Reassign host if the host left
-        if was_host and self.game_status == "waiting":
+        if was_host:
             self.reassign_host()
 
-        # Auto-mark done trading if in trading phase
+        # During active game, ignore their done_trading vote
+        # Don't auto-mark them as done anymore
         if self.current_phase == "trading":
-            self.done_trading.add(player_slot)
-
-            # Check if this completes the phase
-            if self.check_trading_phase_complete():
-                self.change_game_phase()
-                return {
-                    "success": True,
-                    "message": f"{player_name} left. Trading phase complete!",
-                    "phase_changed": True,
-                    "new_host": self.first_player_id if was_host else None
-                }
+            self.done_trading.discard(player_slot)
 
         # Check active players (those still connected)
         active_sessions = len(self.player_names)
@@ -225,7 +264,7 @@ class GameState:
 
         return {
             "success": True,
-            "message": f"{player_name} disconnected. Their player will continue automatically.",
+            "message": f"{player_name} disconnected. They can rejoin anytime.",
             "new_host": self.first_player_id if was_host else None
         }
 
@@ -281,7 +320,13 @@ class GameState:
 
     def mark_done_trading(self, player_slot):
         """Mark player as done trading"""
-        self.done_trading.add(str(player_slot))
+        slot_str = str(player_slot)
+
+        # Ignore if player is disconnected
+        if self.player_left_flags.get(slot_str, False):
+            return {"success": False, "error": "Player is disconnected"}
+
+        self.done_trading.add(slot_str)
 
         player_name = self.get_player_name(player_slot)
         self.add_history_entry('trade', f"{player_name} marked done trading")
@@ -292,21 +337,19 @@ class GameState:
         """Check if trading phase should end"""
         active_slots = set(str(s) for s in self.get_active_slots())
 
-        # Auto-mark disconnected players as done
-        for slot in active_slots:
-            if self.player_left_flags.get(slot, False):
-                self.done_trading.add(slot)
+        # Get connected slots (exclude disconnected players from vote count)
+        connected_slots = set(str(s) for s in self.get_connected_slots())
 
-        # Condition 1: All active players marked done
-        if len(active_slots) >= 1 and active_slots.issubset(self.done_trading):
+        # Condition 1: All CONNECTED players marked done (disconnected players don't vote)
+        if len(connected_slots) >= 1 and connected_slots.issubset(self.done_trading):
             return True
 
         # Condition 2: Timer expired
         if self.phase_start_time:
             elapsed = time.time() - self.phase_start_time
             if elapsed >= self.trading_duration:
-                # Auto-mark everyone as done
-                for slot in active_slots:
+                # Auto-mark all connected players as done
+                for slot in connected_slots:
                     self.done_trading.add(slot)
                 return True
 
@@ -331,6 +374,22 @@ class GameState:
             return elapsed >= self.dice_duration
 
         return False
+
+    def perform_auto_roll(self):
+        """Explicitly perform an auto-roll and return result"""
+        if self.current_phase != "dice":
+            return None
+
+        player_name = self.get_player_name(self.current_turn)
+        is_disconnected = self.player_left_flags.get(str(self.current_turn), False)
+
+        # Add context to history about why this is auto-rolling
+        if is_disconnected:
+            self.add_history_entry('system', f"{player_name} (disconnected) - auto-rolling...")
+
+        # Perform the roll
+        result = self.roll_dice()
+        return result
 
     def change_game_phase(self):
         """Transition between trading and dice phases"""
@@ -392,6 +451,9 @@ class GameState:
             current_idx = active_slots.index(self.current_turn)
 
             if current_idx + 1 < len(active_slots):
+                # Clear dice results before switching to next player
+                self.dice_results = None
+
                 self.current_turn = active_slots[current_idx + 1]
                 self.last_roll_time = time.time()
 
@@ -427,7 +489,15 @@ class GameState:
         action = self.ACTION_DIE_MAPPING[action_die]
         amount = self.AMOUNT_DIE_MAPPING[amount_die]
 
-        self.dice_results = (stock, action, amount)
+        # Increment roll counter to make each roll unique
+        self.roll_count += 1
+        self.dice_results = {
+            "stock": stock,
+            "action": action,
+            "amount": amount,
+            "roll_id": self.roll_count,
+            "timestamp": time.time()
+        }
 
         result = self.handle_dice_roll(stock, action, amount)
 
@@ -462,7 +532,7 @@ class GameState:
 
         return {
             "success": True,
-            "dice": {"stock": stock, "action": action, "amount": amount},
+            "dice": {"stock": stock, "action": action, "amount": amount, "roll_id": self.roll_count},
             "result": result,
             "advance": advance_result
         }
@@ -553,13 +623,21 @@ class GameState:
                     pid = php_id
                     break
 
+            # If not in active sessions, check persistent mapping
+            if pid is None:
+                for php_id, mapped_slot in self.player_id_slots.items():
+                    if mapped_slot == slot_str:
+                        pid = php_id
+                        break
+
             rankings.append({
                 "slot": slot_str,
                 "player_id": pid,
                 "name": data["name"],
                 "net_worth": self.get_networth(slot_str),
                 "cash": data["cash"],
-                "portfolio": data["portfolio"].copy()
+                "portfolio": data["portfolio"].copy(),
+                "was_disconnected": self.player_left_flags.get(slot_str, False)
             })
 
         rankings.sort(key=lambda x: x["net_worth"], reverse=True)
@@ -579,6 +657,13 @@ class GameState:
                     pid = php_id
                     is_connected = True
                     break
+
+            # If not connected, try to find in persistent mapping
+            if pid is None:
+                for php_id, mapped_slot in self.player_id_slots.items():
+                    if mapped_slot == slot:
+                        pid = php_id
+                        break
 
             is_active = not data["name"].startswith("Empty Slot")
 
