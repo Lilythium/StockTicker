@@ -264,10 +264,10 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                                 <td class="stock-val">$<?= number_format($shrs * ($gameState['stocks'][$stk] ?? 1.0), 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                        <tr>
-                            <td class="stock-name">Totals</td>
-                            <td class="stock-qty"><?= number_format($totalShrs) ?></td>
-                            <td class="stock-val"><?= number_format($totalVal, 2) ?></td>
+                        <tr class="portfolio-totals">
+                            <td class="stock-name"><strong>Totals</strong></td>
+                            <td class="stock-qty"><?= number_format($totalShrs) ?><small> SHRS</small></td>
+                            <td class="stock-val">$<?= number_format($totalVal, 2) ?></td>
                         </tr>
                         </tbody>
                     </table>

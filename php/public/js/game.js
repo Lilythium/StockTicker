@@ -182,7 +182,7 @@ async function updatePlayerCards() {
                 }
                 html += `
                 <tr class="portfolio-totals">
-                    <td class="stock-name">Totals</td>
+                    <td class="stock-name"><strong>Totals</strong></td>
                     <td class="stock-qty">${totalShrs.toLocaleString()} <small>SHRS</small></td>
                     <td class="stock-val">${formatMoney(totalVal)}</td>
                 </tr>
