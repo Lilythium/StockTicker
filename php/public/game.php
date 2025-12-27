@@ -120,8 +120,19 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
             <form id="tradeForm" class="trade-form">
                 <div class="trade-controls">
                     <select name="stock" id="stockSelect" class="stock-select" required <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>
-                        <?php foreach(['Gold', 'Silver', 'Oil', 'Bonds', 'Industrials', 'Grain'] as $s): ?>
-                            <option value="<?= $s ?>"><?= $s ?></option>
+                        <?php
+                        $stocks = [
+                                'Gold' => '#fde68a',
+                                'Silver' => '#d8dcdf',
+                                'Oil' => '#b3bce5',
+                                'Bonds' => '#a8d2f0',
+                                'Industrials' => '#dcc2e8',
+                                'Grain' => '#f6bfa6'
+                        ];
+                        foreach($stocks as $name => $color): ?>
+                            <option value="<?= $name ?>" style="background-color: <?= $color ?>; ">
+                                <?= $name ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
 

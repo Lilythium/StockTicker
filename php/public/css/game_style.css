@@ -622,6 +622,18 @@ input[type="checkbox"]:checked + .checkbox-label .checkbox-box .checkmark { opac
     background-color: #f5f5f5 !important;
 }
 
+.select-gold { background-color: #fde68a !important; }
+.select-silver { background-color: #d8dcdf !important; }
+.select-oil { background-color: #b3bce5 !important; }
+.select-bonds { background-color: #a8d2f0 !important; }
+.select-industrials { background-color: #dcc2e8 !important; }
+.select-grain { background-color: #f6bfa6 !important; }
+
+.stock-select option {
+    padding: 10px;
+    font-weight: bold;
+}
+
 /* ===== TACTILE UI ELEMENTS ===== */
 .btn-buy, .btn-sell, .qty-btn {
     border: 3px solid var(--ink-black) !important;
@@ -644,7 +656,7 @@ input[type="checkbox"]:checked + .checkbox-label .checkbox-box .checkmark { opac
 }
 
 .stock-select, .amount-input, .cost-display {
-    background: #ffffff !important;
+    background: #ffffff;
     border: 3px solid var(--ink-black) !important;
     color: var(--ink-black) !important;
     font-family: var(--ticker-font);

@@ -354,6 +354,26 @@ function initializeTradingForm() {
         });
     }
 
+    function updateSelectColor() {
+        const stockSelect = document.getElementById('stockSelect');
+        if (!stockSelect) return;
+
+        // Remove all previous color classes
+        const classes = ['select-gold', 'select-silver', 'select-oil', 'select-bonds', 'select-industrials', 'select-grain'];
+        stockSelect.classList.remove(...classes);
+
+        // Add the class matching the current value (lowercase matches our CSS classes)
+        const selectedValue = stockSelect.value.toLowerCase();
+        stockSelect.classList.add(`select-${selectedValue}`);
+    }
+
+    // Add the event listener inside initializeTradingForm where other listeners are
+    if (stockSelect) {
+        stockSelect.addEventListener('change', updateSelectColor);
+        // Run once immediately to set initial color
+        updateSelectColor();
+    }
+
     if (rollButton) {
         rollButton.onclick = function(e) {
             e.preventDefault();
