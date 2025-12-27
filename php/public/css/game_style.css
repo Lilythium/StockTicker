@@ -233,6 +233,18 @@
     animation: pulse 1.5s infinite;
 }
 
+.round-display {
+    background: #fdf6e3;
+    border: 2px solid var(--ink-black);
+    padding: 4px 12px;
+    font-family: var(--ticker-font);
+    font-weight: bold;
+    color: var(--ink-black);
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.2);
+    display: inline-flex;
+    align-items: center;
+}
+
 .btn-leave {
     background: #c0392b;
     border: 3px solid var(--ink-black);
@@ -423,7 +435,6 @@
     border: var(--border-thick);
     border-top: none;
     box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
-    min-height: 100px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -458,7 +469,7 @@
     letter-spacing: 1px;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.3) !important;
     transition: all 0.1s;
-    width: 100%;
+    width: 80%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -470,19 +481,19 @@
 .btn-roll-ready:hover:not(:disabled) {
     background: #f39c12 !important;
     transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3) !important;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.3) !important;
 }
 
 .btn-roll-ready:active:not(:disabled) {
     transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px rgba(0,0,0,0.3) !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.3) !important;
 }
 
 .btn-roll-ready:disabled {
     background: #bdc3c7 !important;
     color: #7f8c8d !important;
     cursor: not-allowed;
-    box-shadow: 2px 2px 0px rgba(0,0,0,0.1) !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.1) !important;
     transform: none !important;
     filter: grayscale(1);
     opacity: 0.7;
@@ -507,13 +518,14 @@
     flex-direction: row;
     gap: 10px;
     width: 100%;
-    align-items: center; /* Ensures vertical alignment */
+    align-items: center;
+    justify-content: center;
 }
 .trade-row { display: flex; justify-content: center; align-items: center; }
 
 .amount-controls {
     display: flex;
-    flex-direction: row; /* Aligns Input left, Buttons right */
+    flex-direction: row;
     align-items: center;
     gap: 8px;
     width: auto;
@@ -571,6 +583,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.4) !important;
 }
 
 .qty-btn.active {
@@ -670,7 +683,6 @@ input[type="checkbox"]:checked + .checkbox-label .checkbox-box .checkmark { opac
 .stock-select { width: 150px; height: 42px !important; }
 .cost-display {
     background: #eef3f6 !important;
-    width: 100%;
     height: 42px !important;
     display: flex;
     align-items: center;

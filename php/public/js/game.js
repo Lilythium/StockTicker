@@ -163,9 +163,15 @@ async function updatePlayerCards() {
             const portfolioTable = playerCard.querySelector('.portfolio-table tbody');
             if (portfolioTable && player.portfolio) {
                 let html = '';
+                let totalShrs = 0;
+                let totalVal = 0;
                 for (const [stock, qty] of Object.entries(player.portfolio)) {
                     const stockPrice = data.data.stocks[stock] || 1.0;
                     const value = qty * stockPrice;
+
+                    totalShrs += qty;
+                    totalVal += value;
+
                     html += `
                         <tr>
                             <td class="stock-name">${stock}</td>
@@ -174,6 +180,13 @@ async function updatePlayerCards() {
                         </tr>
                     `;
                 }
+                html += `
+                <tr class="portfolio-totals">
+                    <td class="stock-name">Totals</td>
+                    <td class="stock-qty">${totalShrs.toLocaleString()} <small>SHRS</small></td>
+                    <td class="stock-val">${formatMoney(totalVal)}</td>
+                </tr>
+                `;
                 portfolioTable.innerHTML = html;
             }
 

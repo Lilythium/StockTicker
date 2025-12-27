@@ -248,13 +248,27 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                 <div class="portfolio-section">
                     <table class="portfolio-table">
                         <tbody>
+                        <?php
+                        $totalShrs = 0;
+                        $totalVal = 0;
+                        ?>
                         <?php foreach (($p['portfolio'] ?? []) as $stk => $shrs): ?>
+                            <?php
+                            $totalShrs += $shrs;
+                            $totalVal += $shrs * ($gameState['stocks'][$stk] ?? 1.0);
+
+                            ?>
                             <tr>
                                 <td class="stock-name"><?= htmlspecialchars($stk) ?></td>
                                 <td class="stock-qty"><?= number_format($shrs) ?> <small>SHRS</small></td>
                                 <td class="stock-val">$<?= number_format($shrs * ($gameState['stocks'][$stk] ?? 1.0), 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
+                        <tr>
+                            <td class="stock-name">Totals</td>
+                            <td class="stock-qty"><?= number_format($totalShrs) ?></td>
+                            <td class="stock-val"><?= number_format($totalVal, 2) ?></td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
