@@ -4,7 +4,7 @@ let lastHistoryLength = 0;
 let lastDiceResults = null;
 let animationInProgress = false;
 let lastPhase = window.currentPhase;
-let lastTurn = window.currentTurn;
+let lastTurn = null;
 let isFirstPoll = true;
 window.isUserScrolled = false;
 let rollLockTimeout = null;
@@ -14,6 +14,45 @@ let lastDoneCount = 0;
 // Dice roll queue to prevent skipped rolls
 let diceRollQueue = [];
 let isProcessingRoll = false;
+
+/* ===== AUDIO ASSETS ===== */
+const AUDIO_PATHS = {
+    shakes: [
+        '/stock_ticker/audio/dice_shakes/shuffle_open_1.mp3',
+        '/stock_ticker/audio/dice_shakes/shuffle_open_2.mp3',
+        '/stock_ticker/audio/dice_shakes/shuffle_open_3.mp3',
+        '/stock_ticker/audio/dice_shakes/shuffle_open_4.mp3'
+    ],
+    lands: [
+        '/stock_ticker/audio/dice_lands/d6_floor_1.mp3',
+        '/stock_ticker/audio/dice_lands/d6_floor_2.mp3',
+        '/stock_ticker/audio/dice_lands/d6_floor_3.mp3',
+        '/stock_ticker/audio/dice_lands/d6_floor_4.mp3'
+    ],
+    ui: {
+        click: '/stock_ticker/audio/button-click.ogg',
+        gameOver: '/stock_ticker/audio/game-complete.mp3',
+        phaseChange: '/stock_ticker/audio/game-phase-change.mp3',
+        gameStart: '/stock_ticker/audio/game-start.mp3',
+        yourTurn: '/stock_ticker/audio/your-turn.mp3'
+    }
+};
+
+let activeShakeSound = null;
+
+function playSound(pathOrCategory) {
+    let file;
+    if (AUDIO_PATHS[pathOrCategory]) {
+        const entry = AUDIO_PATHS[pathOrCategory];
+        file = Array.isArray(entry) ? entry[Math.floor(Math.random() * entry.length)] : entry;
+    } else {
+        file = pathOrCategory; // Direct path
+    }
+
+    const audio = new Audio(file);
+    audio.play().catch(e => console.log("Audio blocked: " + file));
+    return audio;
+}
 
 /* ===== HELPER FUNCTIONS ===== */
 function formatMoney(amount) {
@@ -28,11 +67,29 @@ function formatMoney(amount) {
 /* ===== INITIALIZATION ===== */
 document.addEventListener('DOMContentLoaded', function() {
     initializeStockPrices();
-    initializeTradingForm(); // This now handles restoration internally
+    initializeTradingForm();
     initializeTimer();
     initializeHistoryScroll();
     loadHistory().then(r => {});
     startPolling();
+
+    if (window.currentTurn === 1 && window.currentPhase === 'trading' && isFirstPoll) {
+        playSound(AUDIO_PATHS.ui.gameStart);
+    }
+
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button, .qty-btn, .spin-btn, input[type="submit"], input[type="button"], .btn-roll-ready, .checkbox-label, .checkbox-box');
+        if (target) {
+            playSound(AUDIO_PATHS.ui.click);
+        }
+    });
+    const stockSelect = document.getElementById('stockSelect');
+    if (stockSelect) {
+        // Play sound when the dropdown is opened
+        stockSelect.addEventListener('mousedown', () => playSound(AUDIO_PATHS.ui.click));
+        // Play sound when an option is selected (index changed)
+        stockSelect.addEventListener('change', () => playSound(AUDIO_PATHS.ui.click));
+    }
 
     if (window.initialDiceResults) {
         lastDiceResults = JSON.stringify(window.initialDiceResults);
@@ -112,6 +169,7 @@ async function checkGameState() {
 
         // 1. Check for game over
         if (data.data && data.data.game_over) {
+            playSound(AUDIO_PATHS.ui.gameOver);
             location.href = `game_over.php?game_id=${encodeURIComponent(window.gameId)}`;
             return;
         }
@@ -154,6 +212,7 @@ async function checkGameState() {
         // 3. Detect Phase Change
         if (data.phase !== lastPhase) {
             lastPhase = data.phase;
+            playSound(AUDIO_PATHS.ui.phaseChange);
             setTimeout(() => location.reload(), 800);
             return;
         }
@@ -165,6 +224,14 @@ async function checkGameState() {
         updateHistory();
 
         isFirstPoll = false;
+
+        // 5. Detect "Your Turn" to roll
+        // Assuming your PHP returns whose turn it is
+        if (data.current_turn_player === window.currentPlayerName && lastTurn !== data.current_turn_player) {
+            playSound(AUDIO_PATHS.ui.yourTurn);
+        }
+        lastTurn = data.current_turn_player;
+
     } catch (error) {
         console.error('Polling error:', error);
     }
@@ -504,13 +571,23 @@ function initializeTradingForm() {
 
     // Handle done trading checkbox
     if (doneCheckbox) {
-        doneCheckbox.addEventListener('click', async function(e) {
-            e.preventDefault();
+        doneCheckbox.addEventListener('change', async function(e) {
+            // 1. Play sound immediately
+            playSound(AUDIO_PATHS.ui.click);
+
             if (this.disabled) return;
 
-            // Disable immediately to prevent double-clicks
+            // 2. Visual lock-down
             this.disabled = true;
+            const wrapper = this.closest('.done-trading-control');
+            if (wrapper) {
+                wrapper.classList.add('checked');
+                // Update the text label if you want it to feel responsive
+                const label = wrapper.querySelector('.checkbox-header label');
+                if (label) label.textContent = 'Trading Complete';
+            }
 
+            // 3. Fire server request
             await performGameAction('done_trading', {
                 player: window.currentPlayerSlot
             });
@@ -704,6 +781,9 @@ function startInstantShaking() {
 
     if (!overlay) return;
 
+    isShaking = true;
+    playShakeSounds();
+
     animationInProgress = true;
     overlay.style.display = 'flex';
 
@@ -715,6 +795,17 @@ function startInstantShaking() {
     });
 }
 
+let isShaking = false;
+function playShakeSounds() {
+    if (!isShaking) return;
+
+    const snd = playSound('shakes');
+    snd.volume = Math.random() * (1.0 - 0.7) + 0.7;
+
+    const nextGap = Math.random() * 50 + 40;
+    setTimeout(playShakeSounds, nextGap);
+}
+
 function showRollAnimation(stock, action, amount, callback) {
     // If already shaking, just reveal
     if (animationInProgress && document.getElementById('die-stock').classList.contains('rolling')) {
@@ -724,7 +815,7 @@ function showRollAnimation(stock, action, amount, callback) {
         startInstantShaking();
         setTimeout(() => {
             revealWhenReady(stock, action, amount, callback);
-        }, 500);
+        }, 1000);
     }
 }
 
@@ -776,10 +867,12 @@ async function revealWhenReady(stock, action, amount, callback) {
 
             if (callback) callback();
         }, 1500);
-    }, 800);
+        isShaking = false;}, 800);
+
 }
 
 function revealDie(el, val) {
+    playSound('lands');
     if (!el) return;
     el.classList.remove('rolling');
     el.classList.add('die-reveal');
