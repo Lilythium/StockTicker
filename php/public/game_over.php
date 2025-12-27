@@ -95,7 +95,7 @@ $networthHistory = $gameState['networth_history'] ?? [];
                         <div class="player-info">
                             <span class="player-name">
                                 <?= htmlspecialchars($player['name']) ?>
-                                <?php if ($isYou): ?><span class="you-pill">(you)</span><?php endif; ?>
+                                <?php if ($isYou): ?><span class="you-pill">you</span><?php endif; ?>
                             </span>
                             <span class="player-worth">$<?= number_format($player['net_worth'], 2) ?></span>
                         </div>

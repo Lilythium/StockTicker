@@ -28,7 +28,7 @@ function formatMoney(amount) {
 /* ===== INITIALIZATION ===== */
 document.addEventListener('DOMContentLoaded', function() {
     initializeStockPrices();
-    initializeTradingForm();
+    initializeTradingForm(); // This now handles restoration internally
     initializeTimer();
     initializeHistoryScroll();
     loadHistory().then(r => {});
@@ -51,6 +51,48 @@ function initializeStockPrices() {
         // Convert cents to dollars
         stockPrices[stock] = priceInCents / 100;
     });
+}
+
+/* ===== TRADE FORM STATE PERSISTENCE ===== */
+let isRestoring = false; // Flag to prevent saving during restoration
+
+function saveTradeFormState() {
+    // Don't save while we're restoring
+    if (isRestoring) return;
+
+    const stockSelect = document.getElementById('stockSelect');
+    const amountInput = document.querySelector('.amount-input');
+
+    if (stockSelect && amountInput) {
+        localStorage.setItem('lastTradeStock', stockSelect.value);
+        localStorage.setItem('lastTradeAmount', amountInput.value);
+    }
+}
+
+function restoreTradeFormState() {
+    isRestoring = true; // Set flag to prevent saving during restoration
+
+    const stockSelect = document.getElementById('stockSelect');
+    const amountInput = document.querySelector('.amount-input');
+
+    const savedStock = localStorage.getItem('lastTradeStock');
+    const savedAmount = localStorage.getItem('lastTradeAmount');
+
+    if (savedStock && stockSelect) {
+        stockSelect.value = savedStock;
+    }
+
+    if (savedAmount && amountInput) {
+        amountInput.value = savedAmount;
+    }
+
+    // Trigger change event to update everything (cost, color, highlights)
+    if (stockSelect) {
+        const event = new Event('change', { bubbles: true });
+        stockSelect.dispatchEvent(event);
+    }
+
+    isRestoring = false; // Clear flag after restoration
 }
 
 /* ===== POLLING & STATE MANAGEMENT ===== */
@@ -326,23 +368,6 @@ async function performGameAction(action, params = {}) {
 }
 
 /* ===== TRADING & FORMS ===== */
-function resetTradeForm() {
-    const stockSelect = document.getElementById('stockSelect');
-    const amountInput = document.querySelector('.amount-input');
-
-    if (stockSelect) {
-        stockSelect.value = 'Gold';
-    }
-
-    if (amountInput) {
-        amountInput.value = '500';
-    }
-
-    // Trigger update to recalculate cost
-    const event = new Event('change');
-    if (stockSelect) stockSelect.dispatchEvent(event);
-}
-
 function initializeTradingForm() {
     const stockSelect = document.getElementById('stockSelect');
     const amountInput = document.querySelector('.amount-input');
@@ -414,6 +439,9 @@ function initializeTradingForm() {
         const cost = amount * price;
         costDisplay.value = `COST: ${formatMoney(cost)}`;
         highlightActiveButton();
+
+        // Save state whenever values change
+        saveTradeFormState();
     }
 
     // Handle trade form submission
@@ -443,14 +471,14 @@ function initializeTradingForm() {
                 }
             }
 
-            // Reset form to defaults after successful submission
+            // Save form state before reload
+            saveTradeFormState();
+
+            // Submit the action
             await performGameAction(action, {
                 stock: stock,
                 amount: amount
             });
-
-            // Reset will happen on page reload, so this is just for safety
-            resetTradeForm();
         });
     }
 
@@ -496,7 +524,14 @@ function initializeTradingForm() {
     });
 
     stockSelect.addEventListener('change', updateCost);
-    updateCost();
+
+    // Restore saved form state FIRST, then call updateCost
+    restoreTradeFormState();
+
+    // If no saved state, run updateCost for the defaults
+    if (!localStorage.getItem('lastTradeStock')) {
+        updateCost();
+    }
 }
 
 /* ===== HISTORY & LOGS ===== */
