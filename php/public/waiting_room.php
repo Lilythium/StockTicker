@@ -106,6 +106,8 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
     <link rel="stylesheet" href="css/waiting_style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="js/game_socketio.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/waiting_room.js"></script>
 </head>
 <body>
 <div class="page-wrapper">
@@ -270,6 +272,5 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
     window.playerId = <?= json_encode($playerId) ?>;
     window.isFirstPlayer = <?= $isFirstPlayer ? 'true' : 'false' ?>;
 </script>
-<script src="js/waiting_room.js"></script>
 </body>
 </html>

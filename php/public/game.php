@@ -77,8 +77,6 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     <title>Stock Ticker Game</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/game_style.css">
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    <script src="js/game_socketio.js"></script>
 </head>
 <body>
 
@@ -113,7 +111,7 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 <div class="action-form <?= ($currentPlayerDoneTrading && $currentPhase === 'trading') ? 'form-disabled' : '' ?>">
     <div class="form-row three-columns">
         <div class="form-column column-roll">
-            <button type="button" class="btn-roll-ready" <?= !$isYourTurn || $currentPhase === 'trading' ? 'disabled' : '' ?>>
+            <button type="button" id="btnRollDice" class="btn-roll-ready" <?= !$isYourTurn || $currentPhase === 'trading' ? 'disabled' : '' ?>>
                 <?= $isYourTurn || $currentPhase === 'trading' ? '🎲 ROLL!' : '⏳ Waiting...' ?>
             </button>
         </div>
@@ -156,8 +154,8 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                     <input type="text" id="costDisplay" class="cost-display" value="COST: $0.00" readonly>
 
                     <div class="trade-action-buttons">
-                        <button type="submit" name="action" value="buy_shares" class="btn-buy" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Buy</button>
-                        <button type="submit" name="action" value="sell_shares" class="btn-sell" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Sell</button>
+                        <button type="button" name="action" id="btnBuy" class="btn-buy" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Buy</button>
+                        <button type="button" name="action" id="btnSell" class="btn-sell" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Sell</button>
                     </div>
                 </div>
             </form>
@@ -299,11 +297,14 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 </div>
 
 <script>
+    window.gameId = <?= json_encode($gameId) ?>;
+    window.currentPlayerId = <?= json_encode($currentPlayerId) ?>;
+    window.currentPlayerSlot = <?= (int)$currentPlayerSlot ?>;
+    window.currentPlayerName = <?= json_encode($currentPlayerName) ?>;
     window.isDicePhase = <?= $isDicePhase ? 'true' : 'false' ?>;
     window.isYourTurn = <?= $isYourTurn ? 'true' : 'false' ?>;
     window.timeRemaining = <?= $timeRemaining ?>;
     window.currentTurn = <?= $currentTurn ?>;
-    window.gameId = <?= json_encode($gameId) ?>;
     window.currentPhase = <?= json_encode($currentPhase) ?>;
     window.currentPlayerSlot = <?= $currentPlayerSlot ?>;
     window.currentPlayerName = <?= json_encode($currentPlayerName) ?>;
@@ -313,6 +314,9 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     window.currentPlayerShares = <?= json_encode($currentPlayerData['portfolio'] ?? []) ?>;
     window.initialHistory = <?= json_encode($gameState['history'] ?? []) ?>;
 </script>
+
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script src="js/game_socketio.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

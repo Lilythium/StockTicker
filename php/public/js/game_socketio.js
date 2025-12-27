@@ -86,6 +86,18 @@ class GameSocketClient {
         // Game state updates
         this.socket.on('game_state_update', (state) => {
             console.log('📊 Game state update received');
+
+            // Auto-detect player slot if not set
+            if (this.playerSlot === null && this.playerId && state.players) {
+                for (const [slot, player] of Object.entries(state.players)) {
+                    if (player.player_id === this.playerId) {
+                        this.playerSlot = parseInt(slot);
+                        console.log(`✓ Auto-detected player slot: ${this.playerSlot}`);
+                        break;
+                    }
+                }
+            }
+
             if (this.onStateUpdate) {
                 this.onStateUpdate(state);
             }
@@ -101,7 +113,7 @@ class GameSocketClient {
                     for (const [slot, player] of Object.entries(gameState.players)) {
                         if (player.player_id === this.playerId) {
                             this.playerSlot = parseInt(slot);
-                            console.log(`Assigned to slot ${this.playerSlot}`);
+                            console.log(`✓ Assigned to slot ${this.playerSlot}`);
                             break;
                         }
                     }
@@ -148,7 +160,9 @@ class GameSocketClient {
         this.socket.on('trade_result', (data) => {
             console.log('💰 Trade result:', data);
             if (!data.success) {
-                showError(data.data?.error || 'Trade failed');
+                if (window.showError) {
+                    window.showError(data.data?.error || 'Trade failed');
+                }
             }
         });
 
@@ -157,6 +171,8 @@ class GameSocketClient {
             console.error('Server error:', data.message);
             if (this.onError) {
                 this.onError(data.message);
+            } else if (window.showError) {
+                window.showError(data.message);
             }
         });
     }
@@ -213,9 +229,18 @@ class GameSocketClient {
      * Buy shares
      */
     buyShares(stock, amount) {
-        if (!this.gameId || this.playerSlot === null) return;
+        if (!this.gameId || this.playerSlot === null) {
+            console.error('❌ Cannot buy shares: gameId or playerSlot not set', {
+                gameId: this.gameId,
+                playerSlot: this.playerSlot
+            });
+            if (window.showError) {
+                window.showError('Not properly connected to game. Please refresh.');
+            }
+            return;
+        }
 
-        console.log(`Buying ${amount} shares of ${stock}`);
+        console.log(`Buying ${amount} shares of ${stock} (slot: ${this.playerSlot})`);
 
         this.socket.emit('buy_shares', {
             game_id: this.gameId,
@@ -229,9 +254,18 @@ class GameSocketClient {
      * Sell shares
      */
     sellShares(stock, amount) {
-        if (!this.gameId || this.playerSlot === null) return;
+        if (!this.gameId || this.playerSlot === null) {
+            console.error('❌ Cannot sell shares: gameId or playerSlot not set', {
+                gameId: this.gameId,
+                playerSlot: this.playerSlot
+            });
+            if (window.showError) {
+                window.showError('Not properly connected to game. Please refresh.');
+            }
+            return;
+        }
 
-        console.log(`Selling ${amount} shares of ${stock}`);
+        console.log(`Selling ${amount} shares of ${stock} (slot: ${this.playerSlot})`);
 
         this.socket.emit('sell_shares', {
             game_id: this.gameId,
@@ -245,9 +279,18 @@ class GameSocketClient {
      * Mark done trading
      */
     markDoneTrading() {
-        if (!this.gameId || this.playerSlot === null) return;
+        if (!this.gameId || this.playerSlot === null) {
+            console.error('❌ Cannot mark done trading: gameId or playerSlot not set', {
+                gameId: this.gameId,
+                playerSlot: this.playerSlot
+            });
+            if (window.showError) {
+                window.showError('Not properly connected to game. Please refresh.');
+            }
+            return;
+        }
 
-        console.log('Marking done trading');
+        console.log(`Marking done trading (slot: ${this.playerSlot})`);
 
         this.socket.emit('done_trading', {
             game_id: this.gameId,
@@ -259,9 +302,18 @@ class GameSocketClient {
      * Roll dice
      */
     rollDice() {
-        if (!this.gameId || this.playerSlot === null) return;
+        if (!this.gameId || this.playerSlot === null) {
+            console.error('❌ Cannot roll dice: gameId or playerSlot not set', {
+                gameId: this.gameId,
+                playerSlot: this.playerSlot
+            });
+            if (window.showError) {
+                window.showError('Not properly connected to game. Please refresh.');
+            }
+            return;
+        }
 
-        console.log('Rolling dice...');
+        console.log(`Rolling dice (slot: ${this.playerSlot})`);
 
         this.socket.emit('roll_dice', {
             game_id: this.gameId,
@@ -297,52 +349,3 @@ class GameSocketClient {
         return this.socket && this.socket.connected;
     }
 }
-
-// Create global instance
-window.gameSocket = new GameSocketClient();
-
-// Auto-connect on page load
-document.addEventListener('DOMContentLoaded', () => {
-    // Connect to server
-    gameSocket.connect();
-
-    // Setup connection status indicator
-    gameSocket.onConnectionChange = (connected) => {
-        const indicator = document.getElementById('connectionStatus');
-        if (indicator) {
-            indicator.style.display = connected ? 'none' : 'block';
-            indicator.textContent = connected ? '✅ Connected' : '❌ Reconnecting...';
-            indicator.className = connected ? 'status-connected' : 'status-disconnected';
-        }
-    };
-
-    // Setup error handler
-    gameSocket.onError = (message) => {
-        showError(message);
-    };
-
-    // If we're on a game page, join automatically
-    if (window.gameId && window.currentPlayerId) {
-        gameSocket.joinGame(
-            window.gameId,
-            window.currentPlayerId,
-            window.currentPlayerName || 'Player'
-        );
-
-        // Setup state update handler
-        gameSocket.onStateUpdate = handleGameStateUpdate;
-
-        // Setup dice rolled handler
-        gameSocket.onDiceRolled = handleDiceRolled;
-
-        // Setup phase changed handler
-        gameSocket.onPhaseChanged = handlePhaseChanged;
-    }
-});
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (gameSocket) {
-        gameSocket.disconnect();
-    }
-});
