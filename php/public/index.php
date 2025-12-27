@@ -110,6 +110,8 @@ $defaultGameId = isset($_GET['game']) ? htmlspecialchars($_GET['game']) : $digit
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Ticker - Lobby</title>
     <link rel="stylesheet" href="css/index_style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/game_socketio.js"></script>
 </head>
 <body>
 <div class="lobby-container">

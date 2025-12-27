@@ -1,21 +1,10 @@
 /* ===== STATE & CONSTANTS ===== */
 let stockPrices = {};
 let lastHistoryLength = 0;
-let lastDiceResults = null;
 let animationInProgress = false;
-let lastPhase = window.currentPhase;
-let lastTurn = null;
-let isFirstPoll = true;
 window.isUserScrolled = false;
-let rollLockTimeout = null;
-let lastPlayerStates = {};
-let lastDoneCount = 0;
 
-// Dice roll queue to prevent skipped rolls
-let diceRollQueue = [];
-let isProcessingRoll = false;
-
-/* ===== AUDIO ASSETS ===== */
+// Audio paths (same as before)
 const AUDIO_PATHS = {
     shakes: [
         '/stock_ticker/audio/dice_shakes/shuffle_open_1.mp3',
@@ -38,21 +27,7 @@ const AUDIO_PATHS = {
     }
 };
 
-let activeShakeSound = null;
-
-function playSound(pathOrCategory) {
-    let file;
-    if (AUDIO_PATHS[pathOrCategory]) {
-        const entry = AUDIO_PATHS[pathOrCategory];
-        file = Array.isArray(entry) ? entry[Math.floor(Math.random() * entry.length)] : entry;
-    } else {
-        file = pathOrCategory; // Direct path
-    }
-
-    const audio = new Audio(file);
-    audio.play().catch(e => console.log("Audio blocked: " + file));
-    return audio;
-}
+let isShaking = false;
 
 /* ===== HELPER FUNCTIONS ===== */
 function formatMoney(amount) {
@@ -64,39 +39,39 @@ function formatMoney(amount) {
     }).format(amount);
 }
 
+function playSound(pathOrCategory) {
+    let file;
+    if (AUDIO_PATHS[pathOrCategory]) {
+        const entry = AUDIO_PATHS[pathOrCategory];
+        file = Array.isArray(entry) ? entry[Math.floor(Math.random() * entry.length)] : entry;
+    } else {
+        file = pathOrCategory;
+    }
+    const audio = new Audio(file);
+    audio.play().catch(e => console.log("Audio blocked: " + file));
+    return audio;
+}
+
 /* ===== INITIALIZATION ===== */
 document.addEventListener('DOMContentLoaded', function() {
     initializeStockPrices();
     initializeTradingForm();
     initializeTimer();
     initializeHistoryScroll();
-    loadHistory().then(r => {});
-    startPolling();
 
-    if (window.currentTurn === 1 && window.currentPhase === 'trading' && isFirstPoll) {
-        playSound(AUDIO_PATHS.ui.gameStart);
-    }
-
+    // Add click sounds
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button, .qty-btn, .spin-btn, input[type="submit"], input[type="button"], .btn-roll-ready, .checkbox-label, .checkbox-box');
         if (target) {
             playSound(AUDIO_PATHS.ui.click);
         }
     });
+
     const stockSelect = document.getElementById('stockSelect');
     if (stockSelect) {
-        // Play sound when the dropdown is opened
         stockSelect.addEventListener('mousedown', () => playSound(AUDIO_PATHS.ui.click));
-        // Play sound when an option is selected (index changed)
         stockSelect.addEventListener('change', () => playSound(AUDIO_PATHS.ui.click));
     }
-
-    if (window.initialDiceResults) {
-        lastDiceResults = JSON.stringify(window.initialDiceResults);
-    }
-
-    // Initialize last player states
-    updateLastPlayerStates();
 });
 
 function initializeStockPrices() {
@@ -105,235 +80,157 @@ function initializeStockPrices() {
         const cell = marker.closest('.price-cell');
         const stock = cell.getAttribute('data-stock');
         const priceInCents = parseFloat(marker.textContent);
-        // Convert cents to dollars
         stockPrices[stock] = priceInCents / 100;
     });
 }
 
-/* ===== TRADE FORM STATE PERSISTENCE ===== */
-let isRestoring = false; // Flag to prevent saving during restoration
+/* ===== SOCKET.IO EVENT HANDLERS ===== */
+function handleGameStateUpdate(state) {
+    console.log('Handling game state update:', state);
 
-function saveTradeFormState() {
-    // Don't save while we're restoring
-    if (isRestoring) return;
+    // Update stock prices
+    if (state.stocks) {
+        updateStockPrices(state.stocks);
+    }
 
-    const stockSelect = document.getElementById('stockSelect');
-    const amountInput = document.querySelector('.amount-input');
+    // Update player cards
+    if (state.players) {
+        updateAllPlayerCards(state.players);
+    }
 
-    if (stockSelect && amountInput) {
-        localStorage.setItem('lastTradeStock', stockSelect.value);
-        localStorage.setItem('lastTradeAmount', amountInput.value);
+    // Update phase indicator
+    if (state.current_phase) {
+        updatePhaseIndicator(state.current_phase, state.current_turn);
+    }
+
+    // Update timer
+    if (state.time_remaining !== undefined) {
+        updateTimer(state.time_remaining);
+    }
+
+    // Update done trading count
+    if (state.done_trading_count !== undefined && state.active_player_count !== undefined) {
+        updateDoneCount(state.done_trading_count, state.active_player_count);
+    }
+
+    // Update history
+    if (state.history && state.history.length !== lastHistoryLength) {
+        renderHistory(state.history);
+        lastHistoryLength = state.history.length;
+    }
+
+    // Check for game over
+    if (state.game_over) {
+        playSound(AUDIO_PATHS.ui.gameOver);
+        setTimeout(() => {
+            window.location.href = `game_over.php?game_id=${window.gameId}`;
+        }, 1000);
     }
 }
 
-function restoreTradeFormState() {
-    isRestoring = true; // Set flag to prevent saving during restoration
+function handleDiceRolled(data) {
+    console.log('Dice rolled event:', data);
 
-    const stockSelect = document.getElementById('stockSelect');
-    const amountInput = document.querySelector('.amount-input');
-
-    const savedStock = localStorage.getItem('lastTradeStock');
-    const savedAmount = localStorage.getItem('lastTradeAmount');
-
-    if (savedStock && stockSelect) {
-        stockSelect.value = savedStock;
-    }
-
-    if (savedAmount && amountInput) {
-        amountInput.value = savedAmount;
-    }
-
-    // Trigger change event to update everything (cost, color, highlights)
-    if (stockSelect) {
-        const event = new Event('change', { bubbles: true });
-        stockSelect.dispatchEvent(event);
-    }
-
-    isRestoring = false; // Clear flag after restoration
+    // Queue the animation
+    queueDiceRoll(data.stock, data.action, data.amount);
 }
 
-/* ===== POLLING & STATE MANAGEMENT ===== */
-function startPolling() {
-    setInterval(checkGameState, 1500);
+function handlePhaseChanged(data) {
+    console.log('Phase changed:', data);
+    playSound(AUDIO_PATHS.ui.phaseChange);
+
+    // Reload page to update UI
+    setTimeout(() => {
+        window.location.reload();
+    }, 800);
 }
 
-async function checkGameState() {
-    // Don't poll during dice animation
-    if (animationInProgress) return;
+/* ===== UI UPDATE FUNCTIONS ===== */
+function updateStockPrices(stocks) {
+    for (const [stock, price] of Object.entries(stocks)) {
+        stockPrices[stock] = price;
 
-    try {
-        const response = await fetch(`check_state.php?game_id=${encodeURIComponent(window.gameId)}&t=${Date.now()}`);
-        const data = await response.json();
+        // Update visual marker position
+        const stockName = stock === 'Industrials' ? 'Indust.' : stock;
+        const row = document.querySelector(`.${stock.toLowerCase()}-row`);
+        if (!row) continue;
 
-        if (!data.success) return;
+        // Clear old markers
+        row.querySelectorAll('.price-cell').forEach(cell => {
+            cell.classList.remove('current-price');
+            const marker = cell.querySelector('.price-marker');
+            if (marker) marker.remove();
+        });
 
-        // 1. Check for game over
-        if (data.data && data.data.game_over) {
-            playSound(AUDIO_PATHS.ui.gameOver);
-            location.href = `game_over.php?game_id=${encodeURIComponent(window.gameId)}`;
-            return;
+        // Add new marker
+        const priceInCents = Math.round(price * 100);
+        const targetCell = row.querySelector(`[data-price="${priceInCents}"]`);
+        if (targetCell) {
+            targetCell.classList.add('current-price');
+            targetCell.innerHTML = `<div class="price-marker">${priceInCents}</div>`;
         }
-
-        // 2. Detect New Dice Roll and queue it
-        if (data.data && data.data.dice_results) {
-            const diceData = data.data.dice_results;
-            const currentRollId = diceData.roll_id;
-
-            console.log('Poll detected dice_results:', diceData);
-            console.log('Last roll_id:', lastDiceResults ? JSON.parse(lastDiceResults).roll_id : 'none');
-            console.log('Current roll_id:', currentRollId);
-            console.log('Is first poll?', isFirstPoll);
-
-            // Compare by roll_id to ensure we catch every unique roll
-            const lastRollId = lastDiceResults ? JSON.parse(lastDiceResults).roll_id : null;
-
-            if (currentRollId !== lastRollId && !isFirstPoll) {
-                lastDiceResults = JSON.stringify(diceData);
-                const stock = diceData.stock;
-                const action = diceData.action;
-                const amount = diceData.amount;
-
-                console.log('🎲 NEW ROLL DETECTED! (roll_id changed)', currentRollId, '- Queueing animation:', stock, action, amount);
-
-                // Add to queue instead of processing immediately
-                queueDiceRoll(stock, action, amount);
-                return;
-            }
-            if (isFirstPoll) {
-                console.log('First poll - setting lastDiceResults without animating');
-                lastDiceResults = JSON.stringify(diceData);
-            }
-        } else if (data.data && !data.data.dice_results) {
-            // Dice results cleared (between turns)
-            console.log('Dice results cleared - ready for next roll');
-            lastDiceResults = null;
-        }
-
-        // 3. Detect Phase Change
-        if (data.phase !== lastPhase) {
-            lastPhase = data.phase;
-            playSound(AUDIO_PATHS.ui.phaseChange);
-            setTimeout(() => location.reload(), 800);
-            return;
-        }
-
-        // 4. Update UI elements without reload
-        await updatePlayerCards();
-        updateDoneCount(data.done_count || 0);
-        updateFormState();
-        updateHistory();
-
-        isFirstPoll = false;
-
-        // 5. Detect "Your Turn" to roll
-        // Assuming your PHP returns whose turn it is
-        if (data.current_turn_player === window.currentPlayerName && lastTurn !== data.current_turn_player) {
-            playSound(AUDIO_PATHS.ui.yourTurn);
-        }
-        lastTurn = data.current_turn_player;
-
-    } catch (error) {
-        console.error('Polling error:', error);
     }
 }
 
-/* ===== DICE ROLL QUEUE SYSTEM ===== */
-function queueDiceRoll(stock, action, amount) {
-    diceRollQueue.push({ stock, action, amount });
-    processNextRoll();
-}
+function updateAllPlayerCards(players) {
+    for (const [slot, player] of Object.entries(players)) {
+        if (!player.is_active) continue;
 
-function processNextRoll() {
-    // If already processing or queue is empty, do nothing
-    if (isProcessingRoll || diceRollQueue.length === 0) return;
+        const card = findPlayerCard(player.name);
+        if (!card) continue;
 
-    isProcessingRoll = true;
-    const roll = diceRollQueue.shift();
-
-    showRollAnimation(roll.stock, roll.action, roll.amount, () => {
-        isProcessingRoll = false;
-
-        // Check if there are more rolls in the queue
-        if (diceRollQueue.length > 0) {
-            // Process next roll immediately
-            setTimeout(() => processNextRoll(), 500);
-        } else {
-            // Queue is empty, reload page
-            setTimeout(() => location.reload(), 1000);
+        // Update cash
+        const cashEl = card.querySelector('.player-cash');
+        if (cashEl) {
+            cashEl.textContent = formatMoney(player.cash);
         }
-    });
-}
 
-/* ===== DYNAMIC UI UPDATES ===== */
-async function updatePlayerCards() {
-    try {
-        const response = await fetch(`get_game_state.php?game_id=${encodeURIComponent(window.gameId)}&t=${Date.now()}`);
-        const data = await response.json();
+        // Update portfolio
+        const portfolioTable = card.querySelector('.portfolio-table tbody');
+        if (portfolioTable && player.portfolio) {
+            let html = '';
+            let totalShrs = 0;
+            let totalVal = 0;
 
-        if (!data.success || !data.data || !data.data.players) return;
+            for (const [stock, qty] of Object.entries(player.portfolio)) {
+                const stockPrice = stockPrices[stock] || 1.0;
+                const value = qty * stockPrice;
 
-        const players = data.data.players;
+                totalShrs += qty;
+                totalVal += value;
 
-        // Update each player card
-        Object.keys(players).forEach(slot => {
-            const player = players[slot];
-            if (!player.is_active) return;
-
-            const playerCard = findPlayerCard(player.name);
-            if (!playerCard) return;
-
-            // Update cash with consistent formatting
-            const cashEl = playerCard.querySelector('.player-cash');
-            if (cashEl) {
-                cashEl.textContent = formatMoney(player.cash);
-            }
-
-            // Update portfolio
-            const portfolioTable = playerCard.querySelector('.portfolio-table tbody');
-            if (portfolioTable && player.portfolio) {
-                let html = '';
-                let totalShrs = 0;
-                let totalVal = 0;
-                for (const [stock, qty] of Object.entries(player.portfolio)) {
-                    const stockPrice = data.data.stocks[stock] || 1.0;
-                    const value = qty * stockPrice;
-
-                    totalShrs += qty;
-                    totalVal += value;
-
-                    html += `
-                        <tr>
-                            <td class="stock-name">${stock}</td>
-                            <td class="stock-qty">${qty.toLocaleString()} <small>SHRS</small></td>
-                            <td class="stock-val">${formatMoney(value)}</td>
-                        </tr>
-                    `;
-                }
                 html += `
+                    <tr>
+                        <td class="stock-name">${stock}</td>
+                        <td class="stock-qty">${qty.toLocaleString()} <small>SHRS</small></td>
+                        <td class="stock-val">${formatMoney(value)}</td>
+                    </tr>
+                `;
+            }
+
+            html += `
                 <tr class="portfolio-totals">
                     <td class="stock-name"><strong>Totals</strong></td>
                     <td class="stock-qty">${totalShrs.toLocaleString()} <small>SHRS</small></td>
                     <td class="stock-val">${formatMoney(totalVal)}</td>
                 </tr>
-                `;
-                portfolioTable.innerHTML = html;
-            }
+            `;
 
-            // Update done trading badge
-            const doneCheck = playerCard.querySelector('.done-check');
-            if (player.done_trading && window.currentPhase === 'trading') {
-                if (!doneCheck) {
-                    const identity = playerCard.querySelector('.player-identity');
-                    if (identity) {
-                        identity.insertAdjacentHTML('beforeend', '<span class="done-check">✅</span>');
-                    }
+            portfolioTable.innerHTML = html;
+        }
+
+        // Update done trading badge
+        const doneCheck = card.querySelector('.done-check');
+        if (player.done_trading && window.currentPhase === 'trading') {
+            if (!doneCheck) {
+                const identity = card.querySelector('.player-identity');
+                if (identity) {
+                    identity.insertAdjacentHTML('beforeend', '<span class="done-check">✅</span>');
                 }
-            } else if (doneCheck) {
-                doneCheck.remove();
             }
-        });
-    } catch (error) {
-        console.error('Error updating player cards:', error);
+        } else if (doneCheck) {
+            doneCheck.remove();
+        }
     }
 }
 
@@ -348,253 +245,149 @@ function findPlayerCard(playerName) {
     return null;
 }
 
-function updateDoneCount(count) {
-    if (count === lastDoneCount) return;
-    lastDoneCount = count;
+function updatePhaseIndicator(phase, turn) {
+    const phaseLabel = document.querySelector('.phase-label');
+    if (phaseLabel) {
+        phaseLabel.textContent = phase === 'trading' ? '🔄 TRADING' : '🎲 DICE';
+        phaseLabel.className = `phase-label ${phase}`;
+    }
+}
 
+function updateTimer(remaining) {
+    const timerEl = document.getElementById('timer');
+    if (timerEl) {
+        const mins = Math.floor(remaining / 60);
+        const secs = Math.floor(remaining % 60);
+        timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+}
+
+function updateDoneCount(doneCount, totalPlayers) {
     const statusEl = document.querySelector('.players-status');
     if (statusEl && window.currentPhase === 'trading') {
-        const totalPlayers = document.querySelectorAll('.player-card').length;
-        statusEl.textContent = `${count}/${totalPlayers} Ready`;
+        statusEl.textContent = `${doneCount}/${totalPlayers} Ready`;
     }
 }
 
-function updateFormState() {
-    const actionForm = document.querySelector('.action-form');
-    const checkbox = document.getElementById('doneTradingCheckbox');
-
-    if (!actionForm || !checkbox) return;
-
-    // Check if player is done trading
-    const isDone = checkbox.checked;
-    const isDicePhase = window.currentPhase === 'dice';
-
-    // Disable/enable form elements
-    const tradeInputs = actionForm.querySelectorAll('.stock-select, .amount-input, .qty-btn, .spin-btn, .btn-buy, .btn-sell');
-    tradeInputs.forEach(input => {
-        input.disabled = isDone || isDicePhase;
-    });
-
-    // Toggle form-disabled class
-    if (isDone || isDicePhase) {
-        actionForm.classList.add('form-disabled');
-    } else {
-        actionForm.classList.remove('form-disabled');
-    }
-}
-
-function updateLastPlayerStates() {
-    const cards = document.querySelectorAll('.player-card');
-    cards.forEach(card => {
-        const nameEl = card.querySelector('.player-name');
-        const cashEl = card.querySelector('.player-cash');
-        if (nameEl && cashEl) {
-            const name = nameEl.textContent.trim();
-            const cash = cashEl.textContent;
-            lastPlayerStates[name] = { cash };
-        }
-    });
-}
-
-/* ===== AJAX GAME ACTIONS ===== */
-async function performGameAction(action, params = {}) {
-    // Clear any existing lock timeout
-    if (rollLockTimeout) {
-        clearTimeout(rollLockTimeout);
-        rollLockTimeout = null;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', action);
-        for (const [key, value] of Object.entries(params)) {
-            formData.append(key, value);
-        }
-
-        const response = await fetch('api/game_action.php', { method: 'POST', body: formData });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || 'Action failed');
-        }
-
-        if (action === 'roll_dice') {
-            const roll = data.data;
-
-            if (roll && roll.stock) {
-                // Server returned dice data immediately - queue it
-                queueDiceRoll(roll.stock, roll.action, roll.amount);
-            } else {
-                // Wait for poller to catch the roll
-                console.log('Waiting for dice results from server...');
-
-                // Safety timeout - reload if animation doesn't start
-                rollLockTimeout = setTimeout(() => {
-                    if (!animationInProgress && diceRollQueue.length === 0) {
-                        console.log('Roll timeout - reloading');
-                        location.reload();
-                    }
-                }, 3000);
-            }
-            return true;
-        }
-
-        // For other actions, just reload
-        location.reload();
-    } catch (error) {
-        console.error("ACTION ERROR:", error);
-        showError(error.message);
-
-        // Reset button state on error
-        const rollBtn = document.querySelector('.btn-roll-ready');
-        if (rollBtn && action === 'roll_dice') {
-            rollBtn.disabled = false;
-            rollBtn.innerHTML = window.isYourTurn ? '🎲 ROLL!' : '⏳ Waiting...';
-        }
-    }
-}
-
-/* ===== TRADING & FORMS ===== */
+/* ===== GAME ACTIONS (using Socket.IO) ===== */
 function initializeTradingForm() {
+    const tradeForm = document.getElementById('tradeForm');
+    const rollButton = document.querySelector('.btn-roll-ready');
+    const doneCheckbox = document.getElementById('doneTradingCheckbox');
+
+    // Trade form submission
+    if (tradeForm) {
+        tradeForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const action = e.submitter.value;
+            const stockSelect = document.getElementById('stockSelect');
+            const amountInput = document.querySelector('.amount-input');
+
+            const stock = stockSelect.value;
+            const amount = parseInt(amountInput.value) || 0;
+
+            // Validation
+            const price = stockPrices[stock] || 1.00;
+            const cost = amount * price;
+
+            if (action === 'buy_shares') {
+                const playerCash = window.currentPlayerCash || 0;
+                if (cost > playerCash) {
+                    showError(`Not enough cash! You need ${formatMoney(cost)} but only have ${formatMoney(playerCash)}`);
+                    return;
+                }
+                gameSocket.buyShares(stock, amount);
+            } else if (action === 'sell_shares') {
+                const playerShares = window.currentPlayerShares || {};
+                const currentShares = playerShares[stock] || 0;
+                if (amount > currentShares) {
+                    showError(`Not enough shares! You're trying to sell ${amount} ${stock} but only have ${currentShares}`);
+                    return;
+                }
+                gameSocket.sellShares(stock, amount);
+            }
+
+            saveTradeFormState();
+        });
+    }
+
+    // Roll button
+    if (rollButton) {
+        rollButton.onclick = function(e) {
+            e.preventDefault();
+            if (this.disabled || animationInProgress) return;
+
+            this.disabled = true;
+            this.innerHTML = '🎲 Rolling...';
+
+            startInstantShaking();
+            gameSocket.rollDice();
+        };
+    }
+
+    // Done trading checkbox
+    if (doneCheckbox) {
+        doneCheckbox.addEventListener('change', function() {
+            playSound(AUDIO_PATHS.ui.click);
+
+            if (this.disabled) return;
+
+            this.disabled = true;
+            const wrapper = this.closest('.done-trading-control');
+            if (wrapper) {
+                wrapper.classList.add('checked');
+            }
+
+            gameSocket.markDoneTrading();
+        });
+    }
+
+    // Setup stock select, amount controls, etc. (same as before)
+    setupTradeControls();
+}
+
+function setupTradeControls() {
     const stockSelect = document.getElementById('stockSelect');
     const amountInput = document.querySelector('.amount-input');
     const costDisplay = document.getElementById('costDisplay');
     const spinUp = document.querySelector('.spin-up');
     const spinDown = document.querySelector('.spin-down');
     const qtyButtons = document.querySelectorAll('.qty-btn');
-    const tradeForm = document.getElementById('tradeForm');
-    const rollButton = document.querySelector('.btn-roll-ready');
-    const doneCheckbox = document.getElementById('doneTradingCheckbox');
-
-    function highlightActiveButton() {
-        const currentVal = parseInt(amountInput.value) || 0;
-
-        qtyButtons.forEach(btn => {
-            const btnVal = parseInt(btn.getAttribute('data-amount'));
-            if (currentVal === btnVal) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    }
-
-    function updateSelectColor() {
-        const stockSelect = document.getElementById('stockSelect');
-        if (!stockSelect) return;
-
-        // Remove all previous color classes
-        const classes = ['select-gold', 'select-silver', 'select-oil', 'select-bonds', 'select-industrials', 'select-grain'];
-        stockSelect.classList.remove(...classes);
-
-        // Add the class matching the current value (lowercase matches our CSS classes)
-        const selectedValue = stockSelect.value.toLowerCase();
-        stockSelect.classList.add(`select-${selectedValue}`);
-    }
-
-    // Add the event listener inside initializeTradingForm where other listeners are
-    if (stockSelect) {
-        stockSelect.addEventListener('change', updateSelectColor);
-        // Run once immediately to set initial color
-        updateSelectColor();
-    }
-
-    if (rollButton) {
-        rollButton.onclick = function(e) {
-            e.preventDefault();
-            if (this.disabled || animationInProgress) return;
-
-            // Lock the button
-            this.disabled = true;
-            this.innerHTML = '🎲 Rolling...';
-
-            // Start shaking animation immediately
-            startInstantShaking();
-
-            // Fire server request
-            performGameAction('roll_dice');
-        };
-    }
-
-    if (!stockSelect || !amountInput || !costDisplay) return;
 
     function updateCost() {
         const stock = stockSelect.value;
         const amount = parseInt(amountInput.value) || 0;
         const price = stockPrices[stock] || 1.00;
-        // Fixed: amount is already in shares, price is in dollars
         const cost = amount * price;
         costDisplay.value = `COST: ${formatMoney(cost)}`;
         highlightActiveButton();
-
-        // Save state whenever values change
         saveTradeFormState();
     }
 
-    // Handle trade form submission
-    if (tradeForm) {
-        tradeForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const action = e.submitter.value;
-            const stock = stockSelect.value;
-            const amount = parseInt(amountInput.value) || 0;
-            const price = stockPrices[stock] || 1.00;
-            const cost = amount * price;
-            const playerCash = window.currentPlayerCash || 0;
-            const playerShares = window.currentPlayerShares || {};
-
-            // Validate
-            if (action === 'buy_shares') {
-                if (cost > playerCash) {
-                    showError(`Not enough cash! You need ${formatMoney(cost)} but only have ${formatMoney(playerCash)}`);
-                    return;
-                }
-            } else if (action === 'sell_shares') {
-                const currentShares = playerShares[stock] || 0;
-                if (amount > currentShares) {
-                    showError(`Not enough shares! You're trying to sell ${amount} ${stock} but only have ${currentShares}`);
-                    return;
-                }
-            }
-
-            // Save form state before reload
-            saveTradeFormState();
-
-            // Submit the action
-            await performGameAction(action, {
-                stock: stock,
-                amount: amount
-            });
+    function highlightActiveButton() {
+        const currentVal = parseInt(amountInput.value) || 0;
+        qtyButtons.forEach(btn => {
+            const btnVal = parseInt(btn.getAttribute('data-amount'));
+            btn.classList.toggle('active', currentVal === btnVal);
         });
     }
 
-    // Handle done trading checkbox
-    if (doneCheckbox) {
-        doneCheckbox.addEventListener('change', async function(e) {
-            // 1. Play sound immediately
-            playSound(AUDIO_PATHS.ui.click);
-
-            if (this.disabled) return;
-
-            // 2. Visual lock-down
-            this.disabled = true;
-            const wrapper = this.closest('.done-trading-control');
-            if (wrapper) {
-                wrapper.classList.add('checked');
-                // Update the text label if you want it to feel responsive
-                const label = wrapper.querySelector('.checkbox-header label');
-                if (label) label.textContent = 'Trading Complete';
-            }
-
-            // 3. Fire server request
-            await performGameAction('done_trading', {
-                player: window.currentPlayerSlot
-            });
-        });
+    function updateSelectColor() {
+        const classes = ['select-gold', 'select-silver', 'select-oil', 'select-bonds', 'select-industrials', 'select-grain'];
+        stockSelect.classList.remove(...classes);
+        const selectedValue = stockSelect.value.toLowerCase();
+        stockSelect.classList.add(`select-${selectedValue}`);
     }
 
-    // Spinner buttons
+    if (stockSelect) {
+        stockSelect.addEventListener('change', () => {
+            updateCost();
+            updateSelectColor();
+        });
+        updateSelectColor();
+    }
+
     if (spinUp) {
         spinUp.addEventListener('click', () => {
             amountInput.value = (parseInt(amountInput.value) || 0) + 500;
@@ -612,7 +405,6 @@ function initializeTradingForm() {
         });
     }
 
-    // Quick amount buttons
     qtyButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             amountInput.value = this.getAttribute('data-amount');
@@ -620,18 +412,179 @@ function initializeTradingForm() {
         });
     });
 
-    stockSelect.addEventListener('change', updateCost);
-
-    // Restore saved form state FIRST, then call updateCost
     restoreTradeFormState();
-
-    // If no saved state, run updateCost for the defaults
     if (!localStorage.getItem('lastTradeStock')) {
         updateCost();
     }
 }
 
-/* ===== HISTORY & LOGS ===== */
+/* ===== TRADE FORM STATE (localStorage) ===== */
+let isRestoring = false;
+
+function saveTradeFormState() {
+    if (isRestoring) return;
+
+    const stockSelect = document.getElementById('stockSelect');
+    const amountInput = document.querySelector('.amount-input');
+
+    if (stockSelect && amountInput) {
+        localStorage.setItem('lastTradeStock', stockSelect.value);
+        localStorage.setItem('lastTradeAmount', amountInput.value);
+    }
+}
+
+function restoreTradeFormState() {
+    isRestoring = true;
+
+    const stockSelect = document.getElementById('stockSelect');
+    const amountInput = document.querySelector('.amount-input');
+
+    const savedStock = localStorage.getItem('lastTradeStock');
+    const savedAmount = localStorage.getItem('lastTradeAmount');
+
+    if (savedStock && stockSelect) {
+        stockSelect.value = savedStock;
+    }
+
+    if (savedAmount && amountInput) {
+        amountInput.value = savedAmount;
+    }
+
+    if (stockSelect) {
+        stockSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    isRestoring = false;
+}
+
+/* ===== DICE ANIMATION (same as before) ===== */
+let diceRollQueue = [];
+let isProcessingRoll = false;
+
+function queueDiceRoll(stock, action, amount) {
+    diceRollQueue.push({ stock, action, amount });
+    processNextRoll();
+}
+
+function processNextRoll() {
+    if (isProcessingRoll || diceRollQueue.length === 0) return;
+
+    isProcessingRoll = true;
+    const roll = diceRollQueue.shift();
+
+    showRollAnimation(roll.stock, roll.action, roll.amount, () => {
+        isProcessingRoll = false;
+
+        if (diceRollQueue.length > 0) {
+            setTimeout(() => processNextRoll(), 500);
+        } else {
+            // Animation complete, reset roll button
+            const rollBtn = document.querySelector('.btn-roll-ready');
+            if (rollBtn) {
+                rollBtn.disabled = false;
+                rollBtn.innerHTML = window.isYourTurn ? '🎲 ROLL!' : '⏳ Waiting...';
+            }
+        }
+    });
+}
+
+function startInstantShaking() {
+    const overlay = document.getElementById('dice-overlay');
+    const dice = [
+        document.getElementById('die-stock'),
+        document.getElementById('die-action'),
+        document.getElementById('die-amount')
+    ];
+
+    if (!overlay) return;
+
+    isShaking = true;
+    playShakeSounds();
+
+    animationInProgress = true;
+    overlay.style.display = 'flex';
+
+    dice.forEach(d => {
+        if (d) {
+            d.classList.add('rolling');
+            d.innerText = '?';
+        }
+    });
+}
+
+function playShakeSounds() {
+    if (!isShaking) return;
+
+    const snd = playSound('shakes');
+    snd.volume = Math.random() * (1.0 - 0.7) + 0.7;
+
+    const nextGap = Math.random() * 50 + 40;
+    setTimeout(playShakeSounds, nextGap);
+}
+
+function showRollAnimation(stock, action, amount, callback) {
+    if (!animationInProgress) {
+        startInstantShaking();
+        setTimeout(() => {
+            revealWhenReady(stock, action, amount, callback);
+        }, 1000);
+    } else {
+        revealWhenReady(stock, action, amount, callback);
+    }
+}
+
+async function revealWhenReady(stock, action, amount, callback) {
+    const dice = {
+        stock: document.getElementById('die-stock'),
+        action: document.getElementById('die-action'),
+        amount: document.getElementById('die-amount')
+    };
+    const text = document.getElementById('dice-text');
+
+    setTimeout(() => {
+        revealDie(dice.stock, (stock === "Industrials" ? "Indust." : stock).toUpperCase());
+    }, 200);
+
+    setTimeout(() => {
+        revealDie(dice.action, action.toUpperCase());
+    }, 500);
+
+    setTimeout(() => {
+        revealDie(dice.amount, amount + '¢');
+
+        if (text) {
+            text.classList.add('reveal-text');
+            if (action.toUpperCase() === "DIV") {
+                if (stockPrices[stock] > 1.00) {
+                    text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
+                } else {
+                    text.innerText = `Dividends for ${stock} not payable.`;
+                }
+            } else {
+                text.innerText = `${stock} went ${action.toUpperCase()} ${amount}¢!`;
+            }
+        }
+
+        setTimeout(() => {
+            const overlay = document.getElementById('dice-overlay');
+            if (overlay) overlay.style.display = 'none';
+            animationInProgress = false;
+            isShaking = false;
+
+            if (callback) callback();
+        }, 1500);
+    }, 800);
+}
+
+function revealDie(el, val) {
+    playSound('lands');
+    if (!el) return;
+    el.classList.remove('rolling');
+    el.classList.add('die-reveal');
+    el.innerText = val;
+}
+
+/* ===== HISTORY & TIMER ===== */
 function initializeHistoryScroll() {
     const historyContent = document.getElementById('historyContent');
     if (!historyContent) return;
@@ -640,46 +593,6 @@ function initializeHistoryScroll() {
         const isNearBottom = this.scrollHeight - this.scrollTop - this.clientHeight < 10;
         window.isUserScrolled = !isNearBottom;
     });
-
-    historyContent.addEventListener('click', function() {
-        const isNearBottom = this.scrollHeight - this.scrollTop - this.clientHeight < 10;
-        if (isNearBottom) window.isUserScrolled = false;
-    });
-}
-
-async function loadHistory() {
-    if (window.initialHistory && window.initialHistory.length > 0) {
-        renderHistory(window.initialHistory);
-        lastHistoryLength = window.initialHistory.length;
-        return;
-    }
-
-    try {
-        const response = await fetch(`get_game_state.php?game_id=${encodeURIComponent(window.gameId)}`);
-        const data = await response.json();
-        if (data.success && data.data && data.data.history) {
-            renderHistory(data.data.history);
-            lastHistoryLength = data.data.history.length;
-        }
-    } catch (error) {
-        console.error('Error loading history:', error);
-    }
-}
-
-async function updateHistory() {
-    try {
-        const response = await fetch(`get_game_state.php?game_id=${encodeURIComponent(window.gameId)}`);
-        const data = await response.json();
-
-        if (data.success && data.data && data.data.history) {
-            if (data.data.history.length !== lastHistoryLength) {
-                renderHistory(data.data.history);
-                lastHistoryLength = data.data.history.length;
-            }
-        }
-    } catch (error) {
-        console.error('Error updating history:', error);
-    }
 }
 
 function renderHistory(history) {
@@ -722,12 +635,12 @@ function toggleHistory() {
 }
 window.toggleHistory = toggleHistory;
 
-/* ===== UI FEEDBACK & ANIMATIONS ===== */
 function initializeTimer() {
     const timerEl = document.getElementById('timer');
     if (!timerEl) return;
 
     let remaining = parseInt(timerEl.getAttribute('data-remaining')) || 0;
+
     setInterval(function() {
         if (remaining > 0) {
             remaining--;
@@ -738,6 +651,7 @@ function initializeTimer() {
     }, 1000);
 }
 
+/* ===== ERROR DISPLAY ===== */
 function showError(message) {
     const existingError = document.querySelector('.client-error');
     if (existingError) existingError.remove();
@@ -769,112 +683,4 @@ function showError(message) {
         errorDiv.style.opacity = '0';
         setTimeout(() => errorDiv.remove(), 500);
     }, 5000);
-}
-
-function startInstantShaking() {
-    const overlay = document.getElementById('dice-overlay');
-    const dice = [
-        document.getElementById('die-stock'),
-        document.getElementById('die-action'),
-        document.getElementById('die-amount')
-    ];
-
-    if (!overlay) return;
-
-    isShaking = true;
-    playShakeSounds();
-
-    animationInProgress = true;
-    overlay.style.display = 'flex';
-
-    dice.forEach(d => {
-        if (d) {
-            d.classList.add('rolling');
-            d.innerText = '?';
-        }
-    });
-}
-
-let isShaking = false;
-function playShakeSounds() {
-    if (!isShaking) return;
-
-    const snd = playSound('shakes');
-    snd.volume = Math.random() * (1.0 - 0.7) + 0.7;
-
-    const nextGap = Math.random() * 50 + 40;
-    setTimeout(playShakeSounds, nextGap);
-}
-
-function showRollAnimation(stock, action, amount, callback) {
-    // If already shaking, just reveal
-    if (animationInProgress && document.getElementById('die-stock').classList.contains('rolling')) {
-        revealWhenReady(stock, action, amount, callback);
-    } else {
-        // Start from scratch
-        startInstantShaking();
-        setTimeout(() => {
-            revealWhenReady(stock, action, amount, callback);
-        }, 1000);
-    }
-}
-
-async function revealWhenReady(stock, action, amount, callback) {
-    const dice = {
-        stock: document.getElementById('die-stock'),
-        action: document.getElementById('die-action'),
-        amount: document.getElementById('die-amount')
-    };
-    const text = document.getElementById('dice-text');
-
-    // Reveal Stock
-    setTimeout(() => {
-        revealDie(dice.stock, (stock === "Industrials" ? "Indust." : stock).toUpperCase());
-    }, 200);
-
-    // Reveal Action
-    setTimeout(() => {
-        revealDie(dice.action, action.toUpperCase());
-    }, 500);
-
-    // Reveal Amount
-    setTimeout(() => {
-        revealDie(dice.amount, amount + '¢');
-
-        if (text) {
-            text.classList.add('reveal-text');
-            if (action.toUpperCase() === "DIV") {
-                if (stockPrices[stock] > 1.00) {
-                    text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
-                } else {
-                    text.innerText = `Dividends for ${stock} not payable.`;
-                }
-            } else {
-                text.innerText = `${stock} went ${action.toUpperCase()} ${amount}¢!`;
-            }
-        }
-
-        setTimeout(() => {
-            const overlay = document.getElementById('dice-overlay');
-            if (overlay) overlay.style.display = 'none';
-            animationInProgress = false;
-
-            // Clear any pending roll lock timeout
-            if (rollLockTimeout) {
-                clearTimeout(rollLockTimeout);
-                rollLockTimeout = null;
-            }
-
-            if (callback) callback();
-        }, 1500);
-        isShaking = false;}, 800);
-
-}
-
-function revealDie(el, val) {
-    playSound('lands');
-    if (!el) return;
-    el.classList.remove('rolling');
-    el.classList.add('die-reveal');
-    el.innerText = val;
 }

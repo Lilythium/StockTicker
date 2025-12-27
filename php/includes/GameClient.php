@@ -3,24 +3,22 @@
 namespace includes;
 
 /**
- * GameClient.php
- * Handles communication with Python game engine via sockets
+ * GameClient.php (HTTP Version)
+ * Handles communication with Socket.IO game server via HTTP API
  */
 class GameClient
 {
-    private $host;
-    private $port;
+    private $serverUrl;
     private $timeout;
 
     public function __construct($host = '127.0.0.1', $port = 9999, $timeout = 5)
     {
-        $this->host = $host;
-        $this->port = $port;
+        $this->serverUrl = "http://{$host}:{$port}";
         $this->timeout = $timeout;
     }
 
     /**
-     * Send a command to the game engine
+     * Send a command to the game engine via HTTP
      *
      * @param string $action The action to perform
      * @param array $params Parameters for the action
@@ -32,7 +30,7 @@ class GameClient
         // Use provided game_id or get from session
         if ($gameId === null) {
             $session = SessionManager::getInstance();
-            $gameId = $session->getGameId() ?? GAME_ID;
+            $gameId = $session->getGameId() ?? 'default_game';
         }
 
         // Build request
@@ -43,41 +41,33 @@ class GameClient
         ];
 
         try {
-            // Create socket connection
-            $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+            // Use cURL to send HTTP POST request
+            $ch = curl_init($this->serverUrl . '/api/action');
 
-            if ($socket === false) {
-                return $this->errorResponse("Failed to create socket: " . socket_strerror(socket_last_error()));
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($request),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => $this->timeout,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ]
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($error) {
+                return $this->errorResponse("Connection error: {$error}");
             }
 
-            // Set timeout
-            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => $this->timeout, 'usec' => 0]);
-            socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => $this->timeout, 'usec' => 0]);
-
-            // Connect
-            $result = @socket_connect($socket, $this->host, $this->port);
-
-            if ($result === false) {
-                socket_close($socket);
-                return $this->errorResponse("Failed to connect to game engine. Is it running?");
+            if ($httpCode !== 200) {
+                return $this->errorResponse("Server returned HTTP {$httpCode}");
             }
 
-            // Send request
-            $jsonRequest = json_encode($request) . "\n";
-            socket_write($socket, $jsonRequest, strlen($jsonRequest));
-
-            // Read response
-            $response = '';
-            while ($chunk = socket_read($socket, 2048)) {
-                $response .= $chunk;
-                if (strlen($chunk) < 2048) {
-                    break;
-                }
-            }
-
-            socket_close($socket);
-
-            // Parse response
             if (empty($response)) {
                 return $this->errorResponse("Empty response from server");
             }
@@ -100,7 +90,49 @@ class GameClient
      */
     public function getGameState($gameId = null)
     {
-        return $this->sendCommand('get_game_state', [], $gameId);
+        if ($gameId === null) {
+            $session = SessionManager::getInstance();
+            $gameId = $session->getGameId() ?? 'default_game';
+        }
+
+        try {
+            $ch = curl_init($this->serverUrl . '/api/state');
+
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode(['game_id' => $gameId]),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => $this->timeout,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ]
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($error) {
+                return $this->errorResponse("Connection error: {$error}");
+            }
+
+            if ($httpCode !== 200) {
+                return $this->errorResponse("Server returned HTTP {$httpCode}");
+            }
+
+            $decoded = json_decode($response, true);
+
+            if ($decoded === null) {
+                return $this->errorResponse("Invalid JSON response");
+            }
+
+            return $decoded;
+
+        } catch (Exception $e) {
+            return $this->errorResponse("Exception: " . $e->getMessage());
+        }
     }
 
     /**
@@ -108,11 +140,50 @@ class GameClient
      */
     public function joinGame($gameId, $playerId, $playerName)
     {
-        return $this->sendCommand('join_game', [
-            'game_id' => $gameId,
-            'player_id' => $playerId,
-            'player_name' => $playerName
-        ], $gameId);
+        try {
+            $ch = curl_init($this->serverUrl . '/api/join');
+
+            $data = [
+                'game_id' => $gameId,
+                'player_id' => $playerId,
+                'player_name' => $playerName
+            ];
+
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($data),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => $this->timeout,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ]
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($error) {
+                return $this->errorResponse("Connection error: {$error}");
+            }
+
+            if ($httpCode !== 200) {
+                return $this->errorResponse("Server returned HTTP {$httpCode}");
+            }
+
+            $decoded = json_decode($response, true);
+
+            if ($decoded === null) {
+                return $this->errorResponse("Invalid JSON response");
+            }
+
+            return $decoded;
+
+        } catch (Exception $e) {
+            return $this->errorResponse("Exception: " . $e->getMessage());
+        }
     }
 
     /**
@@ -145,7 +216,7 @@ class GameClient
     {
         return $this->sendCommand("start_game", [
             'settings' => $settings
-        ]);
+        ], $gameId);
     }
 
     /**

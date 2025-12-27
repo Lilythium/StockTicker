@@ -1,12 +1,9 @@
 /**
- * Waiting Room JavaScript
- * Handles auto-refresh and copy functionality
+ * Waiting Room JavaScript (Socket.IO Version)
+ * Real-time player updates and game start handling
  */
 
-let autoRefreshEnabled = true;
-let refreshTimeout;
 let lastPlayerCount = 0;
-let lastGameStatus = 'waiting';
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeWaitingRoom();
@@ -14,20 +11,241 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeWaitingRoom() {
-    // Get initial state from page
+    // Get initial player count
     const playerItems = document.querySelectorAll('.player-item');
     lastPlayerCount = playerItems.length;
 
-    // Start polling
-    startAutoRefresh();
+    // Setup game socket event handlers for waiting room
+    if (gameSocket) {
+        // Handle state updates
+        gameSocket.onStateUpdate = handleWaitingRoomUpdate;
+
+        // Handle game started event
+        gameSocket.socket.on('game_started', () => {
+            console.log('🎮 Game starting!');
+            playSound('/stock_ticker/audio/game-start.mp3');
+
+            // Show starting message
+            showStartingMessage();
+
+            // Redirect after brief delay
+            setTimeout(() => {
+                window.location.href = 'game.php';
+            }, 1500);
+        });
+
+        // Join the game room if we have credentials
+        if (window.gameId && window.playerId) {
+            const playerName = document.querySelector('.player-name')?.textContent.trim() || 'Player';
+
+            console.log('Joining waiting room:', {
+                gameId: window.gameId,
+                playerId: window.playerId,
+                playerName: playerName
+            });
+
+            gameSocket.joinGame(
+                window.gameId,
+                window.playerId,
+                playerName
+            );
+        }
+    }
 
     // Add event listeners to save settings when changed
-    const settingInputs = document.querySelectorAll('input[name="max_rounds"], input[name="trading_duration"], input[name="dice_duration"], input[name="starting_cash"]');
+    const settingInputs = document.querySelectorAll(
+        'input[name="max_rounds"], input[name="trading_duration"], input[name="dice_duration"], input[name="starting_cash"]'
+    );
     settingInputs.forEach(input => {
         input.addEventListener('input', saveCurrentSettings);
     });
 }
 
+/**
+ * Handle game state updates in waiting room
+ */
+function handleWaitingRoomUpdate(state) {
+    console.log('Waiting room state update:', state);
+
+    // Check if game has started
+    if (state.status === 'active') {
+        console.log('Game is active, redirecting...');
+        window.location.href = 'game.php';
+        return;
+    }
+
+    // Check if game is over
+    if (state.game_over) {
+        console.log('Game is over, redirecting...');
+        window.location.href = `game_over.php?game_id=${window.gameId}`;
+        return;
+    }
+
+    // Count active players
+    let currentPlayerCount = 0;
+    const playerSlots = state.players || {};
+
+    for (const slot in playerSlots) {
+        const player = playerSlots[slot];
+        if (player.player_id && player.is_active) {
+            currentPlayerCount++;
+        }
+    }
+
+    console.log(`Player count: ${currentPlayerCount} (was ${lastPlayerCount})`);
+
+    // Reload page if player count changed
+    if (currentPlayerCount !== lastPlayerCount) {
+        console.log('Player count changed, reloading...');
+        location.reload();
+    }
+
+    // Update player list dynamically (optional - more advanced)
+    updatePlayerList(playerSlots);
+}
+
+/**
+ * Update player list without full page reload
+ */
+function updatePlayerList(players) {
+    const playerListContainer = document.querySelector('.player-list');
+    if (!playerListContainer) return;
+
+    // Clear current list
+    playerListContainer.innerHTML = '';
+
+    let activePlayers = 0;
+    const maxPlayers = window.maxPlayers || 4;
+
+    // Add active players
+    for (const slot in players) {
+        const player = players[slot];
+        if (!player.player_id || !player.is_active) continue;
+
+        activePlayers++;
+
+        const isYou = player.player_id === window.playerId;
+        const isHost = player.player_id === window.hostPlayerId;
+        const isDisconnected = player.has_left || false;
+
+        const itemClass = 'player-item' +
+            (isYou ? ' you' : '') +
+            (isHost ? ' host' : '');
+
+        const playerDiv = document.createElement('div');
+        playerDiv.className = itemClass;
+        playerDiv.innerHTML = `
+            <div class="player-name">
+                ${escapeHtml(player.name)}
+                ${isYou ? '<span class="player-badge you">You</span>' : ''}
+                ${isHost ? '<span class="player-badge host">Host</span>' : ''}
+                ${isDisconnected ? '<span class="player-badge disconnected">Disconnected</span>' : ''}
+            </div>
+            <div style="font-weight: bold;">Ready ✅</div>
+        `;
+
+        playerListContainer.appendChild(playerDiv);
+    }
+
+    // Add empty slots
+    for (let i = activePlayers; i < maxPlayers; i++) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-slot';
+        emptyDiv.textContent = 'Waiting for player...';
+        playerListContainer.appendChild(emptyDiv);
+    }
+
+    // Update player count display
+    const playerCountEl = document.getElementById('playerCount');
+    if (playerCountEl) {
+        playerCountEl.textContent = activePlayers;
+    }
+
+    // Update start button state
+    const startButton = document.querySelector('.start-button');
+    if (startButton && window.isFirstPlayer) {
+        const canStart = activePlayers >= 2;
+        startButton.disabled = !canStart;
+        startButton.textContent = canStart ? 'Start Game' : '⛔ Need 2+ Players';
+    }
+
+    lastPlayerCount = activePlayers;
+}
+
+/**
+ * Show game starting animation/message
+ */
+function showStartingMessage() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s;
+    `;
+
+    const message = document.createElement('div');
+    message.style.cssText = `
+        font-family: 'Arvo', serif;
+        font-size: 3rem;
+        font-weight: bold;
+        color: white;
+        text-transform: uppercase;
+        text-shadow: 3px 3px 0 #000;
+        animation: pulse 1s infinite;
+    `;
+    message.textContent = '🎮 Game Starting...';
+
+    overlay.appendChild(message);
+    document.body.appendChild(overlay);
+}
+
+/**
+ * Handle start game button click
+ */
+function confirmStart() {
+    if (!confirm('Start the game now?')) {
+        return false;
+    }
+
+    // Gather settings from form
+    const settings = {
+        max_rounds: parseInt(document.getElementById('hidden_max_rounds')?.value || 15),
+        trading_duration: parseInt(document.getElementById('hidden_trading_duration')?.value || 2),
+        dice_duration: parseInt(document.getElementById('hidden_dice_duration')?.value || 15),
+        starting_cash: parseInt(document.getElementById('hidden_starting_cash')?.value || 5000)
+    };
+
+    console.log('Starting game with settings:', settings);
+
+    // Start game via Socket.IO
+    if (gameSocket && gameSocket.isConnected()) {
+        gameSocket.startGame(settings);
+    } else {
+        console.error('Socket not connected, falling back to form submission');
+        return true; // Allow form submission as fallback
+    }
+
+    // Disable button
+    const startButton = document.querySelector('.start-button');
+    if (startButton) {
+        startButton.disabled = true;
+        startButton.textContent = '🎮 Starting...';
+    }
+
+    return false; // Prevent form submission since we're using Socket.IO
+}
+
+/**
+ * Settings persistence
+ */
 function saveCurrentSettings() {
     const settings = {
         max_rounds: document.querySelector('input[name="max_rounds"]')?.value || 15,
@@ -46,7 +264,6 @@ function loadSavedSettings() {
     try {
         const settings = JSON.parse(saved);
 
-        // Apply saved settings to sliders
         for (const [name, value] of Object.entries(settings)) {
             const rangeInput = document.getElementById('range_' + name);
             const hiddenInput = document.getElementById('hidden_' + name);
@@ -65,136 +282,24 @@ function loadSavedSettings() {
     }
 }
 
-function toggleAutoRefresh() {
-    autoRefreshEnabled = document.getElementById('autoRefresh').checked;
-    if (autoRefreshEnabled) {
-        startAutoRefresh();
-    } else {
-        clearTimeout(refreshTimeout);
-    }
-}
-
-async function checkForUpdates() {
-    try {
-        const gameId = getGameIdFromPage();
-        if (!gameId) return;
-
-        const response = await fetch(`get_game_state.php?game_id=${encodeURIComponent(gameId)}&_=${Date.now()}`);
-        const data = await response.json();
-
-        if (!data.success || !data.data) return;
-
-        const gameState = data.data;
-
-        // Check if game started
-        if (gameState.status === 'active') {
-            window.location.href = 'game.php';
-            return;
-        }
-
-        // Check if game is over
-        if (gameState.game_over) {
-            window.location.href = `game_over.php?game_id=${encodeURIComponent(gameId)}`;
-            return;
-        }
-
-        // Count active players
-        let currentPlayerCount = 0;
-        if (gameState.players) {
-            for (const slot in gameState.players) {
-                if (gameState.players[slot].player_id) {
-                    currentPlayerCount++;
-                }
-            }
-        }
-
-        // Reload if player count changed
-        if (currentPlayerCount !== lastPlayerCount) {
-            location.reload();
-            return;
-        }
-
-    } catch (error) {
-        console.error('Error checking for updates:', error);
+function updateSetting(name, value) {
+    const hiddenInput = document.getElementById('hidden_' + name);
+    if (hiddenInput) {
+        hiddenInput.value = value;
     }
 
-    // Schedule next check
-    if (autoRefreshEnabled) {
-        refreshTimeout = setTimeout(checkForUpdates, 3000);
-    }
-}
-
-function startAutoRefresh() {
-    if (autoRefreshEnabled) {
-        clearTimeout(refreshTimeout);
-        refreshTimeout = setTimeout(checkForUpdates, 3000);
-    }
-}
-
-function getGameIdFromPage() {
-    // Try to get from game ID display
-    const gameIdEl = document.querySelector('.game-id-value');
-    if (gameIdEl) {
-        return gameIdEl.textContent.trim();
-    }
-
-    // Try to get from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('game_id');
-}
-
-function confirmStart() {
-    clearTimeout(refreshTimeout);
-    return confirm('Start the game now?');
-}
-
-function copyGameLink() {
-    const input = document.getElementById('gameLink');
-    const button = document.getElementById('copyButton');
-
-    if (!input || !button) return;
-
-    const textToCopy = input.value;
-
-    // Modern clipboard API
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            button.textContent = 'Copied!';
-            button.style.background = '#27ae60';
-            setTimeout(() => {
-                button.textContent = 'Copy';
-                button.style.background = '';
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            fallbackCopy(input, button);
-        });
-    } else {
-        // Fallback for older browsers
-        fallbackCopy(input, button);
-    }
-}
-
-function fallbackCopy(input, button) {
-    try {
-        input.select();
-        input.setSelectionRange(0, 99999); // For mobile devices
-
-        const successful = document.execCommand('copy');
-        if (successful) {
-            button.textContent = 'Copied!';
-            button.style.background = '#27ae60';
-            setTimeout(() => {
-                button.textContent = 'Copy';
-                button.style.background = '';
-            }, 2000);
-        }
-
-        // Remove selection
-        window.getSelection().removeAllRanges();
-    } catch (err) {
-        console.error('Fallback copy failed:', err);
-        alert('Copy failed. Please copy manually: ' + input.value);
+    if (name === 'max_rounds') {
+        const display = document.getElementById('val_rounds');
+        if (display) display.innerText = value;
+    } else if (name === 'trading_duration') {
+        const display = document.getElementById('val_trading');
+        if (display) display.innerText = value;
+    } else if (name === 'dice_duration') {
+        const display = document.getElementById('val_dice');
+        if (display) display.innerText = value;
+    } else if (name === 'starting_cash') {
+        const display = document.getElementById('val_cash');
+        if (display) display.innerText = '$' + Number(value).toLocaleString();
     }
 }
 
@@ -212,7 +317,6 @@ function resetSettings() {
 
         if (rangeInput) {
             rangeInput.value = value;
-            // Trigger the input event to update display
             const event = new Event('input', { bubbles: true });
             rangeInput.dispatchEvent(event);
         }
@@ -222,35 +326,77 @@ function resetSettings() {
         }
     }
 
-    // Clear saved settings
     localStorage.removeItem('hostSettings');
 }
 
-function updateSetting(name, value) {
-    // Update hidden input
-    const hiddenInput = document.getElementById('hidden_' + name);
-    if (hiddenInput) {
-        hiddenInput.value = value;
-    }
+/**
+ * Copy game link to clipboard
+ */
+function copyGameLink() {
+    const input = document.getElementById('gameLink');
+    const button = document.getElementById('copyButton');
 
-    // Update display
-    if (name === 'max_rounds') {
-        const display = document.getElementById('val_rounds');
-        if (display) display.innerText = value;
-    } else if (name === 'trading_duration') {
-        const display = document.getElementById('val_trading');
-        if (display) display.innerText = value;
-    } else if (name === 'dice_duration') {
-        const display = document.getElementById('val_dice');
-        if (display) display.innerText = value;
-    } else if (name === 'starting_cash') {
-        const display = document.getElementById('val_cash');
-        if (display) display.innerText = '$' + Number(value).toLocaleString();
+    if (!input || !button) return;
+
+    const textToCopy = input.value;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            button.textContent = 'Copied!';
+            button.style.background = '#27ae60';
+            setTimeout(() => {
+                button.textContent = 'Copy';
+                button.style.background = '';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            fallbackCopy(input, button);
+        });
+    } else {
+        fallbackCopy(input, button);
     }
 }
 
+function fallbackCopy(input, button) {
+    try {
+        input.select();
+        input.setSelectionRange(0, 99999);
+
+        const successful = document.execCommand('copy');
+        if (successful) {
+            button.textContent = 'Copied!';
+            button.style.background = '#27ae60';
+            setTimeout(() => {
+                button.textContent = 'Copy';
+                button.style.background = '';
+            }, 2000);
+        }
+
+        window.getSelection().removeAllRanges();
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        alert('Copy failed. Please copy manually: ' + input.value);
+    }
+}
+
+/**
+ * Utility function to escape HTML
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Play sound effect
+ */
+function playSound(src) {
+    const audio = new Audio(src);
+    audio.play().catch(e => console.log('Audio blocked:', src));
+}
+
 // Make functions available globally
-window.toggleAutoRefresh = toggleAutoRefresh;
 window.confirmStart = confirmStart;
 window.copyGameLink = copyGameLink;
 window.resetSettings = resetSettings;

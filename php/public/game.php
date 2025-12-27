@@ -77,6 +77,8 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     <title>Stock Ticker Game</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/game_style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/game_socketio.js"></script>
 </head>
 <body>
 

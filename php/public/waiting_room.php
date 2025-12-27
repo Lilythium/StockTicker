@@ -104,6 +104,8 @@ $defaultStartingCash = $rematchSettings['starting_cash'] ?? 5000;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting Room - Stock Ticker</title>
     <link rel="stylesheet" href="css/waiting_style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/game_socketio.js"></script>
 </head>
 <body>
 <div class="page-wrapper">
