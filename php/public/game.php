@@ -111,9 +111,7 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 <div class="action-form <?= ($currentPlayerDoneTrading && $currentPhase === 'trading') ? 'form-disabled' : '' ?>">
     <div class="form-row three-columns">
         <div class="form-column column-roll">
-            <button type="button" id="btnRollDice" class="btn-roll-ready" <?= !$isYourTurn || $currentPhase === 'trading' ? 'disabled' : '' ?>>
-                <?= $isYourTurn || $currentPhase === 'trading' ? '🎲 ROLL!' : '⏳ Waiting...' ?>
-            </button>
+            <button type="button" id="btnRollDice" class="btn-roll-ready"></button>
         </div>
 
         <div class="form-column column-trade">
