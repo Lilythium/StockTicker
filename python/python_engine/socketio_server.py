@@ -102,7 +102,7 @@ async def join_game(sid, data):
             game = get_game(game_id, player_count)
 
         sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
-        await sio.enter_room(sid, game_id)
+        sio.enter_room(sid, game_id)
 
         # Rest of the existing join logic...
         existing_slot = None
@@ -518,4 +518,4 @@ app.on_startup.append(start_background_tasks)
 
 if __name__ == '__main__':
     logger.info("Starting Socket.IO game server on port 9999...")
-    web.run_app(app, host='127.0.0.1', port=9999)
+    web.run_app(app, host='0.0.0.0', port=9999)
