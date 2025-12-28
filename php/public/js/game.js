@@ -659,8 +659,23 @@ function setupTradeEventListeners() {
     const spinDown = document.querySelector('.spin-down');
     const doneCheckbox = document.getElementById('doneTradingCheckbox');
 
+    const playClick = () => playSound(AUDIO_PATHS.ui.click);
+
+    if (stockSelect) {
+        stockSelect.addEventListener('mousedown', () => {
+            if (!stockSelect.disabled) playClick();
+        });
+
+        stockSelect.addEventListener('change', () => {
+            playClick(); // Added sound for when an option is chosen
+            updateStockSelectColor();
+        });
+        setTimeout(() => updateStockSelectColor(), 100);
+    }
+
     if (spinUp) {
         spinUp.addEventListener('click', () => {
+            playClick(); // Added sound
             let val = parseInt(amountInput.value) || 0;
             amountInput.value = val + 500;
             updateCostDisplay();
@@ -669,6 +684,7 @@ function setupTradeEventListeners() {
 
     if (spinDown) {
         spinDown.addEventListener('click', () => {
+            playClick(); // Added sound
             let val = parseInt(amountInput.value) || 0;
             if (val >= 500) amountInput.value = val - 500;
             updateCostDisplay();
@@ -677,50 +693,33 @@ function setupTradeEventListeners() {
 
     if (doneCheckbox) {
         doneCheckbox.addEventListener('change', function() {
-            console.log('📋 Done trading checkbox changed:', this.checked);
-
             if (this.checked) {
-                console.log('Marking player as done trading...');
+                playClick(); // Added sound
                 gameSocket.markDoneTrading();
-
                 this.disabled = true;
                 const box = this.parentElement.querySelector('.checkbox-box');
-                if (box) {
-                    box.classList.add('checked');
-                    console.log('  ✓ Checkbox box marked as checked');
-                }
-
+                if (box) box.classList.add('checked');
                 const label = document.querySelector('.checkbox-header label');
-                if (label) {
-                    label.textContent = 'Trading Complete';
-                    console.log('  ✓ Label updated');
-                }
-
+                if (label) label.textContent = 'Trading Complete';
                 disableTradingControls();
-                console.log('✅ Done trading sequence completed');
             }
         });
-        console.log('✅ Done trading checkbox listener attached');
 
-        // Also add direct click handler to the checkbox box
         const checkboxBox = document.querySelector('.checkbox-box');
         if (checkboxBox) {
-            checkboxBox.addEventListener('click', function(e) {
-                console.log('📋 Checkbox box clicked');
+            checkboxBox.addEventListener('click', function() {
                 if (!doneCheckbox.disabled && !doneCheckbox.checked) {
+                    // Sound is handled by the 'change' listener above
                     doneCheckbox.checked = true;
                     doneCheckbox.dispatchEvent(new Event('change'));
                 }
             });
-            checkboxBox.style.cursor = 'pointer';
-            console.log('✅ Checkbox box click handler attached');
         }
-    } else {
-        console.warn('⚠️ Done trading checkbox not found!');
     }
 
     if (btnBuy) {
         btnBuy.addEventListener('click', (e) => {
+            playClick(); // Added sound
             e.preventDefault();
             gameSocket.buyShares(stockSelect.value, parseInt(amountInput.value));
         });
@@ -728,6 +727,7 @@ function setupTradeEventListeners() {
 
     if (btnSell) {
         btnSell.addEventListener('click', (e) => {
+            playClick(); // Added sound
             e.preventDefault();
             gameSocket.sellShares(stockSelect.value, parseInt(amountInput.value));
         });
@@ -737,15 +737,10 @@ function setupTradeEventListeners() {
         btnRoll.addEventListener('click', () => {
             const isMyTurn = (window.currentTurn == window.currentPlayerSlot);
             const isDicePhase = (window.currentPhase === 'dice');
+            if (!isMyTurn || !isDicePhase) return;
 
-            if (!isMyTurn || !isDicePhase) {
-                console.warn('Attempted to roll when not allowed');
-                return;
-            }
-
-            playSound('ui/click');
+            playClick(); // Sound remains here
             gameSocket.rollDice();
-
             btnRoll.disabled = true;
             btnRoll.textContent = '🎲 Rolling...';
         });
@@ -753,6 +748,7 @@ function setupTradeEventListeners() {
 
     document.querySelectorAll('.qty-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            playClick(); // Added sound
             if (amountInput) {
                 amountInput.value = btn.getAttribute('data-amount');
                 updateCostDisplay();
@@ -761,11 +757,16 @@ function setupTradeEventListeners() {
     });
 
     if (stockSelect) {
+        // Play sound when the dropdown is opened
+        stockSelect.addEventListener('mousedown', () => {
+            if (!stockSelect.disabled) playClick();
+        });
+
         stockSelect.addEventListener('change', updateStockSelectColor);
         setTimeout(() => updateStockSelectColor(), 100);
     }
 
-    console.log("✅ Event Listeners Attached");
+    console.log("✅ Event Listeners & Audio Attached");
 }
 
 function updateStockSelectColor() {

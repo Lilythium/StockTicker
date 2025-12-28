@@ -160,6 +160,45 @@ $socketioServer = getenv('SOCKETIO_SERVER') ?: 'http://127.0.0.1:9999';
 </div>
 
 <script>
+
+    const CLICK_PATH = '/stock_ticker/audio/button-click.ogg'
+
+    function playSound(file) {
+        const audio = new Audio(file);
+        audio.play().catch(e => console.log("Audio blocked: " + file));
+        return audio;
+    }
+
+    // 2. Attach to the primary button
+    document.addEventListener('DOMContentLoaded', () => {
+        const joinForm = document.querySelector('form');
+        const joinBtn = document.querySelector('.btn-primary');
+
+        if (joinForm && joinBtn) {
+            joinBtn.addEventListener('click', (e) => {
+                // Play the sound
+                playSound(CLICK_PATH);
+
+                // Optional: If you find the sound gets cut off by the page load,
+                // you can uncomment the lines below to add a 150ms delay:
+
+                e.preventDefault();
+                setTimeout(() => {
+                    joinForm.submit();
+                }, 50);
+
+            });
+        }
+
+        // 3. Add sound to the "Dice" randomizer icon too!
+        const diceIcon = document.querySelector('.input-icon');
+        if (diceIcon) {
+            diceIcon.addEventListener('click', () => {
+                playSound(CLICK_PATH);
+            });
+        }
+    });
+
     function generateGameId() {
         const chars = '0123456789';
         let gameId = '';

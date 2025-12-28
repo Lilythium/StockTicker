@@ -9,6 +9,28 @@ let isHost = false;
 let isJoining = false;
 let isRedirecting = false;
 
+/* ===== AUDIO HELPERS ===== */
+const AUDIO_PATHS = {
+    ui: {
+        click: '/stock_ticker/audio/button-click.ogg'
+    }
+};
+
+let lastClickTime = 0;
+
+function playClick(isSlider = false) {
+    const now = Date.now();
+    // If it's a slider, only play if 80ms has passed since the last click
+    // If it's a regular button, play immediately
+    if (isSlider && now - lastClickTime < 80) {
+        return;
+    }
+
+    lastClickTime = now;
+    const audio = new Audio(AUDIO_PATHS.ui.click);
+    audio.play().catch(e => console.log("Audio blocked"));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎮 Initializing Waiting Room...');
 
@@ -32,12 +54,34 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSavedSettings();
 
     // Setup UI listeners
-    const settingInputs = document.querySelectorAll(
-        'input[name="max_rounds"], input[name="trading_duration"], input[name="dice_duration"], input[name="starting_cash"]'
-    );
+    const settingInputs = document.querySelectorAll('.retro-slider');
     settingInputs.forEach(input => {
-        input.addEventListener('input', saveCurrentSettings);
+        // 'input' fires while dragging, 'change' fires when they let go
+        // We use 'input' but you might want to throttle it if it's too noisy
+        input.addEventListener('input', () => {
+            // Optional: only play if value is a multiple of something to reduce noise
+            playClick(true);
+            saveCurrentSettings();
+        });
     });
+    const startBtn = document.getElementById('startGameBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            if (!startBtn.disabled) playClick();
+        });
+    }
+    const leaveBtn = document.querySelector('.btn-leave');
+    if (leaveBtn) {
+        leaveBtn.addEventListener('click', playClick);
+    }
+    const resetBtn = document.querySelector('.btn-reset');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', playClick);
+    }
+    const copyBtn = document.getElementById('copyButton');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', playClick);
+    }
 
     console.log('✅ Waiting Room Initialized');
 });
@@ -281,6 +325,8 @@ function startGame() {
         alert('Only the host can start the game');
         return;
     }
+
+    playClick();
 
     if (!confirm('Start the game now?')) {
         return;

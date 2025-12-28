@@ -155,7 +155,6 @@ $socketioServer = getenv('SOCKETIO_SERVER') ?: 'http://127.0.0.1:9999';
                    value="<?= $defaultDiceDuration ?>"
                    class="retro-slider"
                    oninput="updateSetting('dice_duration', this.value)">
-            <br><small>0 = instant auto-roll</small>
         </div>
 
         <div class="setting-group">
