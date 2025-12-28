@@ -1,6 +1,6 @@
 """
-Socket.IO Game Server
-Real-time game engine with Socket.IO support
+Socket.IO Game Server - FIXED VERSION
+Real-time game engine with proper auto-transitions
 """
 
 import socketio
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Create Socket.IO server
 sio = socketio.AsyncServer(
     async_mode='aiohttp',
-    cors_allowed_origins='*',  # Configure this properly in production
+    cors_allowed_origins='*',
     logger=True,
     engineio_logger=True
 )
@@ -231,6 +231,7 @@ async def done_trading(sid, data):
 
         # Check if trading phase should end
         if game.check_trading_phase_complete():
+            logger.info(f"Trading complete in game {game_id}, changing phase...")
             game.change_game_phase()
             await sio.emit('phase_changed', {
                 'new_phase': 'dice',
@@ -264,11 +265,12 @@ async def roll_dice(sid, data):
                 'stock': dice_data.get('stock'),
                 'action': dice_data.get('action'),
                 'amount': dice_data.get('amount'),
-                'roll_id': dice_data.get('roll_id')
+                'roll_id': dice_data.get('roll_id'),
+                'auto': False
             }, room=game_id)
 
             # Wait a moment for animation, then send state update
-            await sio.sleep(2)  # Give time for dice animation
+            await sio.sleep(2)
             await emit_game_state(game_id)
 
             # Check if game is over
@@ -311,36 +313,67 @@ async def get_state(sid, data):
 async def background_game_monitor():
     """Monitor games for auto-transitions and disconnects"""
     while True:
-        await sio.sleep(2)  # Check every 2 seconds
+        await sio.sleep(1)  # Check every 1 second for faster response
 
-        for game_id, game in games.items():
+        for game_id, game in list(games.items()):
             if game.game_status != 'active':
                 continue
 
             changed = False
 
-            # Check trading phase completion
+            # Check trading phase completion (TIMER EXPIRED)
             if game.current_phase == 'trading' and game.check_trading_phase_complete():
+                logger.info(f"🔄 Auto-transition: Trading phase complete in {game_id}")
                 game.change_game_phase()
                 await sio.emit('phase_changed', {
                     'new_phase': 'dice',
-                    'message': 'Trading complete! Time to roll!'
+                    'message': 'Trading time expired! Moving to dice phase.'
                 }, room=game_id)
                 changed = True
 
             # Check for auto-roll (disconnected player or timer expired)
-            if game.current_phase == 'dice' and game.check_auto_roll_needed():
-                result = game.perform_auto_roll()
-                if result:
-                    dice_data = result.get('dice', {})
-                    await sio.emit('dice_rolled', {
-                        'stock': dice_data.get('stock'),
-                        'action': dice_data.get('action'),
-                        'amount': dice_data.get('amount'),
-                        'roll_id': dice_data.get('roll_id'),
-                        'auto': True
-                    }, room=game_id)
-                    changed = True
+            if game.current_phase == 'dice':
+                # DEBUG: Log current state
+                current_player = game.current_turn
+                player_name = game.get_player_name(current_player)
+                is_disconnected = game.player_left_flags.get(str(current_player), False)
+
+                logger.info(f"🎲 Dice phase check for {game_id}:")
+                logger.info(f"  ↳ Current turn: {current_player} ({player_name})")
+                logger.info(f"  ↳ Disconnected: {is_disconnected}")
+                logger.info(f"  ↳ Dice duration: {game.dice_duration}s")
+                logger.info(f"  ↳ Last roll time: {game.last_roll_time}")
+
+                if game.check_auto_roll_needed():
+                    logger.info(f"🎲 AUTO-ROLL TRIGGERED in {game_id} for {player_name}")
+
+                    if is_disconnected:
+                        logger.info(f"  ↳ Reason: Player is OFFLINE")
+                    else:
+                        logger.info(f"  ↳ Reason: Timer expired")
+
+                    result = game.perform_auto_roll()
+                    if result:
+                        dice_data = result.get('dice', {})
+                        logger.info(f"  ↳ Dice result: {dice_data}")
+
+                        await sio.emit('dice_rolled', {
+                            'stock': dice_data.get('stock'),
+                            'action': dice_data.get('action'),
+                            'amount': dice_data.get('amount'),
+                            'roll_id': dice_data.get('roll_id'),
+                            'auto': True,
+                            'player': player_name,
+                            'player_disconnected': is_disconnected
+                        }, room=game_id)
+                        changed = True
+
+                        # Wait for animation
+                        await sio.sleep(2)
+                    else:
+                        logger.error(f"  ↳ FAILED to perform auto-roll!")
+                else:
+                    logger.info(f"  ↳ No auto-roll needed yet")
 
             # Broadcast state if changed
             if changed:
@@ -348,6 +381,7 @@ async def background_game_monitor():
 
                 # Check for game over
                 if game.game_over:
+                    logger.info(f"🏁 Game {game_id} ended")
                     await sio.emit('game_over', {
                         'winner': game.winner,
                         'final_rankings': game.get_final_rankings()
@@ -441,7 +475,6 @@ async def http_game_action(request):
             }, status=400)
 
         game = get_game(game_id)
-        result = None
 
         # Handle different actions
         if action == 'initialize_game':
@@ -501,6 +534,51 @@ async def http_game_action(request):
             'error': str(e)
         }, status=400)
 
+
+async def debug_state(request):
+    """Debug endpoint to check game state"""
+    try:
+        data = await request.json()
+        game_id = data.get('game_id')
+
+        if not game_id:
+            return web.json_response({
+                'success': False,
+                'error': 'game_id required'
+            }, status=400)
+
+        game = get_game(game_id)
+
+        # Return detailed debug info
+        debug_info = {
+            'game_id': game_id,
+            'phase': game.current_phase,
+            'current_turn': game.current_turn,
+            'current_turn_str': str(game.current_turn),
+            'player_left_flags': game.player_left_flags,
+            'is_current_player_disconnected': game.player_left_flags.get(str(game.current_turn), False),
+            'dice_duration': game.dice_duration,
+            'last_roll_time': game.last_roll_time,
+            'check_auto_roll_needed_result': game.check_auto_roll_needed(),
+            'active_players': game.get_active_slots(),
+            'connected_players': game.get_connected_slots()
+        }
+
+        return web.json_response({
+            'success': True,
+            'debug': debug_info,
+            'game_state': game.get_game_state()
+        })
+
+    except Exception as e:
+        return web.json_response({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+# Add to routes
+app.router.add_post('/api/debug', debug_state)
 
 # Register HTTP routes
 app.router.add_get('/health', health_check)

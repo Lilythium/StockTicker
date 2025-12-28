@@ -1,4 +1,3 @@
-/* ===== js/game.js ===== */
 const AUDIO_PATHS = {
     shakes: [
         '/stock_ticker/audio/dice_shakes/shuffle_open_1.mp3',
@@ -59,7 +58,7 @@ if (!window.gameSocket) {
 // Store current stock prices globally
 window.currentStockPrices = {};
 window.currentPlayerCash = 0;
-window.stockPrices = {}; // For dice animation compatibility
+window.stockPrices = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🎮 Initializing UI Logic...');
@@ -67,9 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize from PHP data
     if (window.initialDiceResults) {
         console.log('Initial dice results found:', window.initialDiceResults);
-        // Show initial dice results after a short delay
         setTimeout(() => {
-            showDiceRollAnimation(window.initialDiceResults);
+            const dice = window.initialDiceResults;
+            queueDiceRoll(dice.stock, dice.action, dice.amount);
         }, 1000);
     }
 
@@ -81,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Establish the connection first
     gameSocket.connect();
 
-    // 2. Set up the data and Join (Only do this ONCE)
+    // 2. Set up the data and Join
     if (window.gameId && window.currentPlayerId) {
         gameSocket.gameId = window.gameId;
         gameSocket.playerId = window.currentPlayerId;
@@ -91,8 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         console.log("Setting up game:", gameSocket.gameId, "Slot:", gameSocket.playerSlot);
-
-        // Tell the server we are here
         gameSocket.joinGame(window.gameId, window.currentPlayerId, window.currentPlayerName || 'Player');
     }
 
@@ -105,19 +102,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Setup dice roll listener - FIXED: Use queue system
+    // Setup dice roll listener - HANDLES AUTO-ROLLS TOO
     gameSocket.onDiceRolled = (data) => {
         console.log('🎲 Dice rolled event received:', data);
-        // Extract values from data structure
         const stock = data.stock || data.stock_die || '';
         const action = data.action || data.action_die || '';
         const amount = data.amount || data.amount_die || '';
+        const isAutoRoll = data.auto || false;
 
-        // Queue the dice roll for animation
+        if (isAutoRoll) {
+            console.log('🤖 Auto-roll detected');
+        }
+
         queueDiceRoll(stock, action, amount);
     };
 
-    // Setup state update to handle stock prices and cost
+    // Setup phase change listener - REQUEST STATE IMMEDIATELY
+    gameSocket.onPhaseChanged = (data) => {
+        console.log('🔄 Phase changed event:', data);
+        playSound('ui/phaseChange');
+
+        // Immediately request fresh state
+        if (gameSocket.isConnected()) {
+            gameSocket.requestState();
+        }
+    };
+
+    // Setup state update
     gameSocket.onStateUpdate = (state) => {
         if (typeof handleGameStateUpdate === 'function') {
             handleGameStateUpdate(state);
@@ -131,22 +142,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Initialize UI Event Listeners
     setupTradeEventListeners();
-
-    // 5. Initialize cost display listeners
     initCostDisplayListeners();
-
-    // 6. Initialize history and timer
     initializeHistoryScroll();
 
-    // 7. Set up initial cost display
+    // 5. Set up initial displays
     setTimeout(() => {
         updateCostDisplay();
-        // Also update stock display with initial data
         if (window.currentStockPrices && Object.keys(window.currentStockPrices).length > 0) {
             updateStockDisplay(window.currentStockPrices);
         }
+        updateRollButton();
+        updateDoneTradingDisplay();
     }, 200);
-    setTimeout(() => updateRollButton(), 200);
+
     console.log('✅ UI Logic Initialized');
 });
 
@@ -156,7 +164,6 @@ function updatePlayerCardsUI(players, stocks) {
 
     let html = '';
 
-    // Convert object to array if necessary and loop
     Object.keys(players).forEach(slot => {
         const p = players[slot];
         if (!p.player_id) return;
@@ -165,10 +172,8 @@ function updatePlayerCardsUI(players, stocks) {
         const isOff = p.has_left || false;
         const isDone = p.done_trading || false;
 
-        // CSS Classes
         const cardClass = `player-card ${isMe ? 'current-player' : ''} ${isOff ? 'disconnected' : ''}`;
 
-        // Portfolio Calculation
         let totalShrs = 0;
         let totalVal = 0;
         let portfolioRows = '';
@@ -191,7 +196,6 @@ function updatePlayerCardsUI(players, stocks) {
             });
         }
 
-        // Build the Card HTML
         html += `
         <div class="${cardClass}">
             <div class="player-header-row">
@@ -225,11 +229,10 @@ function updateRollButton() {
     const btnRoll = document.getElementById('btnRollDice');
     if (!btnRoll) return;
 
-    // Get current values
     const isMyTurn = (window.currentTurn == window.currentPlayerSlot);
     const isDicePhase = (window.currentPhase === 'dice');
 
-    console.log('Updating roll button:', {
+    console.log('🎲 Updating roll button:', {
         isMyTurn,
         isDicePhase,
         currentTurn: window.currentTurn,
@@ -237,49 +240,57 @@ function updateRollButton() {
         currentPhase: window.currentPhase
     });
 
-    // Button is enabled ONLY when it's your turn AND it's the dice phase
-    const shouldBeEnabled = (isMyTurn && isDicePhase);
-
-    // Always disable if not your turn
     if (!isMyTurn) {
         btnRoll.disabled = true;
         btnRoll.textContent = '⏳ Not Your Turn';
         btnRoll.classList.remove('active-roll');
         btnRoll.classList.add('inactive-roll');
         btnRoll.setAttribute('title', `Waiting for Player ${window.currentTurn + 1}'s turn...`);
+        window.lastRollButtonState = 'not-my-turn';
         return;
     }
 
-    // If it is your turn, check the phase
     if (isDicePhase) {
-        // Your turn AND dice phase = enabled
         btnRoll.disabled = false;
         btnRoll.textContent = '🎲 ROLL!';
         btnRoll.classList.add('active-roll');
         btnRoll.classList.remove('inactive-roll');
         btnRoll.setAttribute('title', 'Click to roll the dice!');
 
-        // Play your turn sound if just became your turn
         if (window.lastRollButtonState !== 'active') {
+            console.log('🔔 Playing your turn sound');
             playSound('ui/yourTurn');
         }
         window.lastRollButtonState = 'active';
     } else {
-        // Your turn but not dice phase (trading phase) = disabled
         btnRoll.disabled = true;
         btnRoll.textContent = '⏳ Trading Phase';
         btnRoll.classList.remove('active-roll');
         btnRoll.classList.add('inactive-roll');
         btnRoll.setAttribute('title', 'Waiting for trading phase to end...');
-        window.lastRollButtonState = 'inactive';
+        window.lastRollButtonState = 'trading';
     }
 }
 
 function handleGameStateUpdate(state) {
     console.log("📥 Received new game state:", state);
 
+    const previousPhase = window.currentPhase;
+    const previousTurn = window.currentTurn;
+
     window.currentPhase = state.current_phase;
     window.currentTurn = state.current_turn;
+
+    // Detect phase change
+    if (previousPhase && previousPhase !== window.currentPhase) {
+        console.log(`🔄 Phase changed: ${previousPhase} → ${window.currentPhase}`);
+        handlePhaseChange(previousPhase, window.currentPhase);
+    }
+
+    // Detect turn change
+    if (previousTurn !== undefined && previousTurn !== window.currentTurn) {
+        console.log(`👉 Turn changed: ${previousTurn} → ${window.currentTurn}`);
+    }
 
     // Update stock prices globally
     if (state.stocks) {
@@ -288,58 +299,247 @@ function handleGameStateUpdate(state) {
         updateStockDisplay(state.stocks);
     }
 
-    // 1. Update Cash & Portfolio on Player Cards
+    // Update player cards
     if (state.players) {
         updatePlayerCardsUI(state.players, state.stocks);
+
+        const mySlot = window.currentPlayerSlot.toString();
+        if (state.players[mySlot]) {
+            window.currentPlayerCash = state.players[mySlot].cash || 0;
+
+            // Update done trading state for current player
+            const myDoneTrading = state.players[mySlot].done_trading || false;
+            updateDoneTradingCheckbox(myDoneTrading);
+        }
     }
 
-    // 2. Update Game History
+    // Update history
     if (state.history) {
         renderHistory(state.history);
     }
 
-    // 3. Update Roll Button
+    // Update roll button (ALWAYS call this on state update)
     updateRollButton();
 
+    // Update phase label in header
+    updatePhaseLabel(state.current_phase);
+
+    // Update done trading count
+    updateDoneTradingCount(state);
+
+    // Update timer display
+    updateTimerDisplay(state);
+
+    // Update turn status
+    updateTurnStatus(state);
+
+    // Update cost display
+    setTimeout(() => updateCostDisplay(), 100);
+}
+
+function updatePhaseLabel(phase) {
     const phaseLabel = document.querySelector('.phase-label');
     if (phaseLabel) {
-        phaseLabel.className = `phase-label ${state.current_phase}`;
-        phaseLabel.textContent = state.current_phase === 'trading' ? '🔄 TRADING' : '🎲 DICE';
+        phaseLabel.className = `phase-label ${phase}`;
+        phaseLabel.textContent = phase === 'trading' ? '🔄 TRADING' : '🎲 DICE';
     }
+}
 
+function updateDoneTradingCount(state) {
+    const playersStatus = document.querySelector('.players-status');
+    if (!playersStatus) return;
+
+    if (state.current_phase === 'trading') {
+        const doneCount = state.done_trading_count || 0;
+        const activeCount = state.active_player_count || 0;
+        playersStatus.textContent = `${doneCount}/${activeCount} Ready`;
+        playersStatus.style.display = '';
+    } else {
+        playersStatus.style.display = 'none';
+    }
+}
+
+function updateTurnStatus(state) {
+    const turnStatus = document.querySelector('.turn-status');
+    if (!turnStatus) return;
+
+    if (state.current_phase === 'dice') {
+        const isMyTurn = (state.current_turn == window.currentPlayerSlot);
+        turnStatus.innerHTML = isMyTurn
+            ? '<span class="your-turn-pulse">YOUR TURN</span>'
+            : 'WAITING...';
+        turnStatus.style.display = '';
+    } else {
+        turnStatus.style.display = 'none';
+    }
+}
+
+function updateTimerDisplay(state) {
     const timerDisplay = document.getElementById('timer');
-    if (timerDisplay && state.time_remaining !== undefined) {
-        // Force the value to a whole number
-        const totalSeconds = Math.floor(state.time_remaining);
+    if (!timerDisplay || state.time_remaining === undefined) return;
 
-        // Stop local timer if it exists to prevent double-ticking
-        if (window.gameTimerInterval) clearInterval(window.gameTimerInterval);
+    const totalSeconds = Math.floor(state.time_remaining);
 
-        // Initial draw
-        updateTimerText(totalSeconds);
-
-        // Start local "smooth" countdown so it moves every second
-        let localSeconds = totalSeconds;
-        window.gameTimerInterval = setInterval(() => {
-            if (localSeconds > 0) {
-                localSeconds--;
-                updateTimerText(localSeconds);
-            } else {
-                clearInterval(window.gameTimerInterval);
-            }
-        }, 1000);
+    // Clear existing interval
+    if (window.gameTimerInterval) {
+        clearInterval(window.gameTimerInterval);
     }
 
-    // Update cost display after state update
-    setTimeout(() => updateCostDisplay(), 100);
+    // Initial display
+    updateTimerText(totalSeconds);
 
-    // Helper function to format 00:00
+    // Start countdown
+    let localSeconds = totalSeconds;
+    window.gameTimerInterval = setInterval(() => {
+        if (localSeconds > 0) {
+            localSeconds--;
+            updateTimerText(localSeconds);
+        } else {
+            // Timer expired
+            clearInterval(window.gameTimerInterval);
+            console.log('⏰ Timer expired! Requesting state update...');
+
+            // Request fresh state to check for phase change
+            if (gameSocket && gameSocket.isConnected()) {
+                gameSocket.requestState();
+            }
+        }
+    }, 1000);
+
     function updateTimerText(seconds) {
-        const timerDisplay = document.getElementById('timer');
-        if (!timerDisplay) return;
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+        // Visual warning when time is running low
+        if (seconds <= 10 && seconds > 0) {
+            timerDisplay.style.color = '#ef4444';
+            timerDisplay.style.fontWeight = 'bold';
+        } else {
+            timerDisplay.style.color = '';
+            timerDisplay.style.fontWeight = '';
+        }
+    }
+}
+
+function handlePhaseChange(oldPhase, newPhase) {
+    console.log(`🎯 Handling phase change: ${oldPhase} → ${newPhase}`);
+
+    playSound('ui/phaseChange');
+
+    if (newPhase === 'trading') {
+        resetDoneTradingCheckbox();
+        enableTradingControls();
+        console.log('✅ Entered trading phase - controls enabled');
+    } else if (newPhase === 'dice') {
+        disableTradingControls();
+        console.log('🎲 Entered dice phase - trading disabled');
+    }
+}
+
+function resetDoneTradingCheckbox() {
+    const checkbox = document.getElementById('doneTradingCheckbox');
+    const checkboxBox = document.querySelector('.checkbox-box');
+    const checkboxHeader = document.querySelector('.checkbox-header label');
+    const doneControl = document.querySelector('.done-trading-control');
+
+    if (checkbox) {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+    }
+
+    if (checkboxBox) {
+        checkboxBox.classList.remove('checked');
+    }
+
+    if (checkboxHeader) {
+        checkboxHeader.textContent = 'Done Trading?';
+    }
+
+    if (doneControl) {
+        doneControl.classList.remove('checked');
+    }
+
+    console.log('✅ Done trading checkbox reset');
+}
+
+function updateDoneTradingCheckbox(isDone) {
+    const checkbox = document.getElementById('doneTradingCheckbox');
+    const checkboxBox = document.querySelector('.checkbox-box');
+    const checkboxHeader = document.querySelector('.checkbox-header label');
+    const doneControl = document.querySelector('.done-trading-control');
+
+    if (isDone) {
+        if (checkbox) {
+            checkbox.checked = true;
+            checkbox.disabled = true;
+        }
+
+        if (checkboxBox) {
+            checkboxBox.classList.add('checked');
+        }
+
+        if (checkboxHeader) {
+            checkboxHeader.textContent = 'Trading Complete';
+        }
+
+        if (doneControl) {
+            doneControl.classList.add('checked');
+        }
+    }
+}
+
+function updateDoneTradingDisplay() {
+    // Initial setup from PHP state
+    const checkbox = document.getElementById('doneTradingCheckbox');
+    if (checkbox && checkbox.checked) {
+        const checkboxBox = document.querySelector('.checkbox-box');
+        const checkboxHeader = document.querySelector('.checkbox-header label');
+
+        if (checkboxBox) checkboxBox.classList.add('checked');
+        if (checkboxHeader) checkboxHeader.textContent = 'Trading Complete';
+    }
+}
+
+function enableTradingControls() {
+    const stockSelect = document.getElementById('stockSelect');
+    const btnBuy = document.getElementById('btnBuy');
+    const btnSell = document.getElementById('btnSell');
+    const qtyButtons = document.querySelectorAll('.qty-btn');
+    const spinButtons = document.querySelectorAll('.spin-btn');
+    const actionForm = document.querySelector('.action-form');
+    const doneCheckbox = document.getElementById('doneTradingCheckbox');
+
+    if (stockSelect) stockSelect.disabled = false;
+    if (btnBuy) btnBuy.disabled = false;
+    if (btnSell) btnSell.disabled = false;
+    if (doneCheckbox && !doneCheckbox.checked) doneCheckbox.disabled = false;
+
+    qtyButtons.forEach(btn => btn.disabled = false);
+    spinButtons.forEach(btn => btn.disabled = false);
+
+    if (actionForm) {
+        actionForm.classList.remove('form-disabled');
+    }
+}
+
+function disableTradingControls() {
+    const stockSelect = document.getElementById('stockSelect');
+    const btnBuy = document.getElementById('btnBuy');
+    const btnSell = document.getElementById('btnSell');
+    const qtyButtons = document.querySelectorAll('.qty-btn');
+    const spinButtons = document.querySelectorAll('.spin-btn');
+    const actionForm = document.querySelector('.action-form');
+
+    if (stockSelect) stockSelect.disabled = true;
+    if (btnBuy) btnBuy.disabled = true;
+    if (btnSell) btnSell.disabled = true;
+
+    qtyButtons.forEach(btn => btn.disabled = true);
+    spinButtons.forEach(btn => btn.disabled = true);
+
+    if (actionForm) {
+        actionForm.classList.add('form-disabled');
     }
 }
 
@@ -348,22 +548,19 @@ function setupTradeEventListeners() {
     const btnSell = document.getElementById('btnSell');
     const stockSelect = document.getElementById('stockSelect');
     const amountInput = document.querySelector('.amount-input');
-    const btnDone = document.getElementById('btnDoneTrading');
     const btnRoll = document.getElementById('btnRollDice');
     const spinUp = document.querySelector('.spin-up');
     const spinDown = document.querySelector('.spin-down');
     const doneCheckbox = document.getElementById('doneTradingCheckbox');
 
-    // Handle Up Arrow
     if (spinUp) {
         spinUp.addEventListener('click', () => {
             let val = parseInt(amountInput.value) || 0;
-            amountInput.value = val + 500; // Stock Ticker usually moves in 500s
+            amountInput.value = val + 500;
             updateCostDisplay();
         });
     }
 
-    // Handle Down Arrow
     if (spinDown) {
         spinDown.addEventListener('click', () => {
             let val = parseInt(amountInput.value) || 0;
@@ -375,16 +572,16 @@ function setupTradeEventListeners() {
     if (doneCheckbox) {
         doneCheckbox.addEventListener('change', function() {
             if (this.checked) {
-                // Trigger the socket emit
                 gameSocket.markDoneTrading();
 
-                // Visually "lock" the UI immediately for responsiveness
                 this.disabled = true;
                 const box = this.parentElement.querySelector('.checkbox-box');
                 if (box) box.classList.add('checked');
 
                 const label = document.querySelector('.checkbox-header label');
                 if (label) label.textContent = 'Trading Complete';
+
+                disableTradingControls();
             }
         });
     }
@@ -403,10 +600,6 @@ function setupTradeEventListeners() {
         });
     }
 
-    if (btnDone) {
-        btnDone.addEventListener('click', () => gameSocket.markDoneTrading());
-    }
-
     if (btnRoll) {
         btnRoll.addEventListener('click', () => {
             const isMyTurn = (window.currentTurn == window.currentPlayerSlot);
@@ -416,31 +609,22 @@ function setupTradeEventListeners() {
                 console.warn('Attempted to roll when not allowed');
                 return;
             }
-            // Add visual feedback
+
             btnRoll.classList.add('rolling-clicked');
             setTimeout(() => btnRoll.classList.remove('rolling-clicked'), 300);
 
-            // Play click sound
             playSound('ui/click');
-
-            // Call the socket function
             gameSocket.rollDice();
 
-            // Immediately disable button to prevent multiple clicks
             btnRoll.disabled = true;
             btnRoll.textContent = '🎲 Rolling...';
 
             window.rollButtonTimeout = setTimeout(() => {
-                // Only re-enable if still your turn and dice phase
-                if (window.currentTurn == window.currentPlayerSlot && window.currentPhase === 'dice') {
-                    btnRoll.disabled = false;
-                    btnRoll.textContent = '🎲 ROLL!';
-                }
+                updateRollButton();
             }, 5000);
         });
     }
 
-    // Quick Buttons (500, 1K, etc)
     document.querySelectorAll('.qty-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (amountInput) {
@@ -452,19 +636,11 @@ function setupTradeEventListeners() {
 
     if (stockSelect) {
         stockSelect.addEventListener('change', updateStockSelectColor);
-
-        // Apply initial color on page load
         setTimeout(() => updateStockSelectColor(), 100);
     }
 
-    console.log("✅ Event Listeners Attached to:", {
-        buy: !!document.getElementById('btnBuy'),
-        sell: !!document.getElementById('btnSell'),
-        roll: !!document.getElementById('btnRollDice')
-    });
+    console.log("✅ Event Listeners Attached");
 }
-
-/* ===== STOCK SELECT COLOR HIGHLIGHTING ===== */
 
 function updateStockSelectColor() {
     const stockSelect = document.getElementById('stockSelect');
@@ -490,25 +666,19 @@ function updateStockSelectColor() {
     }
 }
 
-/* ===== STOCK PRICE DISPLAY FUNCTIONS ===== */
-
 function updateStockDisplay(stocks) {
     console.log('Updating stock prices display:', stocks);
 
     Object.keys(stocks).forEach(stockName => {
-        // Convert dollar price to cents for display
         const priceCents = Math.round((stocks[stockName] || 1) * 100);
 
-        // Handle different stock name formats
         let displayName = stockName;
         if (stockName === 'Industrials') {
             displayName = 'Indust.';
         }
 
-        // Find all price cells for this stock
         const stockCells = document.querySelectorAll(`td[data-stock="${displayName}"]`);
 
-        // Remove current-price class from all cells
         stockCells.forEach(cell => {
             cell.classList.remove('current-price');
             const marker = cell.querySelector('.price-marker');
@@ -517,11 +687,9 @@ function updateStockDisplay(stocks) {
             }
         });
 
-        // Find the cell at the correct price position (every 5 cents)
         let targetPrice = Math.round(priceCents / 5) * 5;
-        targetPrice = Math.max(0, Math.min(200, targetPrice)); // Clamp to 0-200
+        targetPrice = Math.max(0, Math.min(200, targetPrice));
 
-        // Find the target cell
         const targetCell = document.querySelector(`td[data-stock="${displayName}"][data-price="${targetPrice}"]`);
         if (targetCell) {
             targetCell.classList.add('current-price');
@@ -532,8 +700,6 @@ function updateStockDisplay(stocks) {
         }
     });
 }
-
-/* ===== COST DISPLAY FUNCTION ===== */
 
 function updateCostDisplay() {
     const stockSelect = document.getElementById('stockSelect');
@@ -547,13 +713,11 @@ function updateCostDisplay() {
     const stockPrice = window.currentStockPrices[selectedStock] || 1.00;
     const totalCost = amount * stockPrice;
 
-    // Format the display
     costDisplay.value = `COST: $${totalCost.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     })}`;
 
-    // Add visual feedback if cost exceeds cash
     if (window.currentPlayerCash !== undefined && totalCost > window.currentPlayerCash && amount > 0) {
         costDisplay.style.color = '#ef4444';
         costDisplay.style.fontWeight = 'bold';
@@ -562,8 +726,6 @@ function updateCostDisplay() {
         costDisplay.style.fontWeight = '';
     }
 }
-
-/* ===== COST DISPLAY LISTENERS ===== */
 
 function initCostDisplayListeners() {
     const stockSelect = document.getElementById('stockSelect');
@@ -578,9 +740,7 @@ function initCostDisplayListeners() {
         amountInput.addEventListener('change', () => updateCostDisplay());
     }
 
-    // Initial cost display update
     setTimeout(() => updateCostDisplay(), 100);
-
     console.log('✅ Cost display listeners initialized');
 }
 
@@ -605,13 +765,6 @@ function processNextRoll() {
 
         if (diceRollQueue.length > 0) {
             setTimeout(() => processNextRoll(), 500);
-        } else {
-            // Animation complete, reset roll button
-            const rollBtn = document.querySelector('.btn-roll-ready');
-            if (rollBtn) {
-                rollBtn.disabled = false;
-                rollBtn.innerHTML = window.isYourTurn ? '🎲 ROLL!' : '⏳ Waiting...';
-            }
         }
     });
 }
@@ -623,22 +776,27 @@ function startInstantShaking() {
         document.getElementById('die-action'),
         document.getElementById('die-amount')
     ];
+    const text = document.getElementById('dice-text');
 
     if (!overlay) return;
 
     isShaking = true;
-
     animationInProgress = true;
     overlay.style.display = 'flex';
 
     dice.forEach(d => {
         if (d) {
+            d.classList.remove('die-reveal');
             d.classList.add('rolling');
             d.innerText = '?';
         }
     });
 
-    // Start shake sound
+    if (text) {
+        text.classList.remove('reveal-text');
+        text.innerText = 'Rolling...';
+    }
+
     playShakeSounds();
 }
 
@@ -655,14 +813,12 @@ function playShakeSounds() {
 function showRollAnimation(stock, action, amount, callback) {
     console.log('🎲 Starting dice animation:', { stock, action, amount });
 
-    if (!animationInProgress) {
-        startInstantShaking();
-        setTimeout(() => {
-            revealWhenReady(stock, action, amount, callback);
-        }, 1000);
-    } else {
+    // Always start fresh
+    startInstantShaking();
+
+    setTimeout(() => {
         revealWhenReady(stock, action, amount, callback);
-    }
+    }, 1000);
 }
 
 async function revealWhenReady(stock, action, amount, callback) {
@@ -680,14 +836,15 @@ async function revealWhenReady(stock, action, amount, callback) {
     setTimeout(() => {
         revealDie(dice.action, action.toUpperCase());
     }, 500);
+
     isShaking = false;
+
     setTimeout(() => {
         revealDie(dice.amount, amount + '¢');
 
         if (text) {
             text.classList.add('reveal-text');
             if (action.toUpperCase() === "DIV") {
-                // Check if stock price is above $1.00
                 const stockPrice = window.stockPrices[stock] || 0;
                 if (stockPrice > 1.00) {
                     text.innerText = `${stock} ${action.toUpperCase()} ${amount}¢!`;
@@ -700,8 +857,25 @@ async function revealWhenReady(stock, action, amount, callback) {
         }
 
         setTimeout(() => {
+            // PROPERLY HIDE AND RESET OVERLAY
             const overlay = document.getElementById('dice-overlay');
-            if (overlay) overlay.style.display = 'none';
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+
+            // Reset dice for next animation
+            Object.values(dice).forEach(d => {
+                if (d) {
+                    d.classList.remove('die-reveal', 'rolling');
+                    d.innerText = '?';
+                }
+            });
+
+            if (text) {
+                text.classList.remove('reveal-text');
+                text.innerText = 'Rolling...';
+            }
+
             animationInProgress = false;
 
             if (callback) callback();
@@ -717,13 +891,11 @@ function revealDie(el, val) {
     el.innerText = val;
 }
 
-/* ===== HISTORY & TIMER ===== */
-
+/* ===== HISTORY ===== */
 function initializeHistoryScroll() {
     const historyContent = document.getElementById('historyContent');
     if (!historyContent) return;
 
-    // Set initial scroll to bottom
     historyContent.scrollTop = historyContent.scrollHeight;
 
     historyContent.addEventListener('scroll', function() {
@@ -736,8 +908,6 @@ function renderHistory(history) {
     const historyContent = document.getElementById('historyContent');
     if (!historyContent) return;
 
-    console.log('📜 Rendering history:', history);
-
     if (!history || history.length === 0) {
         historyContent.innerHTML = '<div class="history-empty">No events yet...</div>';
         return;
@@ -745,13 +915,10 @@ function renderHistory(history) {
 
     let html = '';
 
-    // Handle both array of strings and array of objects
     history.forEach(entry => {
         if (typeof entry === 'string') {
-            // Simple string entry
             html += `<div class="history-item">${entry}</div>`;
         } else {
-            // Object entry (from older code)
             const type = entry.type || 'event';
             const timestamp = entry.timestamp ? new Date(entry.timestamp * 1000).toLocaleTimeString() : '';
             const message = entry.message || entry;
@@ -762,7 +929,6 @@ function renderHistory(history) {
     const wasAtBottom = historyContent.scrollHeight - historyContent.scrollTop - historyContent.clientHeight < 10;
     historyContent.innerHTML = html;
 
-    // Auto-scroll to bottom if user wasn't manually scrolling
     if (!window.isUserScrolled || wasAtBottom) {
         historyContent.scrollTop = historyContent.scrollHeight;
     }
@@ -784,24 +950,7 @@ function toggleHistory() {
 }
 window.toggleHistory = toggleHistory;
 
-function initializeTimer() {
-    const timerEl = document.getElementById('timer');
-    if (!timerEl) return;
-
-    let remaining = parseInt(timerEl.getAttribute('data-remaining')) || 0;
-
-    setInterval(function() {
-        if (remaining > 0) {
-            remaining--;
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        }
-    }, 1000);
-}
-
 /* ===== ERROR DISPLAY ===== */
-
 function showError(message) {
     console.error('❌', message);
 
@@ -837,10 +986,8 @@ function showError(message) {
     }, 5000);
 }
 
-// Make showError global so socket client can use it
 window.showError = showError;
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (gameSocket) {
         gameSocket.disconnect();

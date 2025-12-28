@@ -360,36 +360,111 @@ class GameState:
         if self.current_phase != "dice":
             return False
 
+        # Get current turn as string for dictionary lookup
+        current_turn_str = str(self.current_turn)
+
+        # Debug info
+        print(f"DEBUG check_auto_roll_needed:")
+        print(f"  ↳ Current turn: {self.current_turn} ({current_turn_str})")
+        print(f"  ↳ Player left flags: {self.player_left_flags}")
+        print(f"  ↳ Current player in flags: {self.player_left_flags.get(current_turn_str, 'NOT FOUND')}")
+
         # Auto-roll if current player disconnected
-        if self.player_left_flags.get(str(self.current_turn), False):
+        if self.player_left_flags.get(current_turn_str, False):
+            print(f"  ↳ Player is disconnected - auto-roll needed")
             return True
 
-        # Auto-roll if dice timer is 0
+        # Auto-roll if dice timer is 0 (instant mode)
         if self.dice_duration == 0:
+            print(f"  ↳ Dice duration is 0 - auto-roll needed")
             return True
 
         # Auto-roll if time expired
         if self.last_roll_time:
             elapsed = time.time() - self.last_roll_time
-            return elapsed >= self.dice_duration
+            print(f"  ↳ Elapsed time: {elapsed}s, Duration: {self.dice_duration}s")
+            if elapsed >= self.dice_duration:
+                print(f"  ↳ Time expired - auto-roll needed")
+                return True
 
+        print(f"  ↳ No auto-roll needed")
         return False
 
     def perform_auto_roll(self):
         """Explicitly perform an auto-roll and return result"""
         if self.current_phase != "dice":
+            print(f"DEBUG: Not in dice phase, cannot auto-roll")
             return None
 
+        current_turn_str = str(self.current_turn)
         player_name = self.get_player_name(self.current_turn)
-        is_disconnected = self.player_left_flags.get(str(self.current_turn), False)
+        is_disconnected = self.player_left_flags.get(current_turn_str, False)
+
+        print(f"DEBUG perform_auto_roll:")
+        print(f"  ↳ Player: {player_name} (slot {self.current_turn})")
+        print(f"  ↳ Disconnected: {is_disconnected}")
 
         # Add context to history about why this is auto-rolling
         if is_disconnected:
             self.add_history_entry('system', f"{player_name} (disconnected) - auto-rolling...")
+        else:
+            self.add_history_entry('system', f"{player_name} - dice timer expired, auto-rolling...")
 
-        # Perform the roll
-        result = self.roll_dice()
-        return result
+        # Perform the roll - pass None to indicate system roll
+        try:
+            result = self.roll_dice(player_slot=None)  # System call
+
+            if result and result.get('success'):
+                print(f"  ↳ Auto-roll successful: {result.get('dice')}")
+                return result
+            else:
+                print(f"  ↳ Auto-roll failed: {result}")
+
+                # Fallback: Force a roll
+                print(f"  ↳ Using fallback roll")
+                return self._force_dice_roll()
+        except Exception as e:
+            print(f"  ↳ Exception in auto-roll: {e}")
+            import traceback
+            traceback.print_exc()
+            return self._force_dice_roll()
+
+    def _force_dice_roll(self):
+        """Force a dice roll as fallback"""
+        stock_die = random.randint(1, 6)
+        action_die = random.randint(1, 6)
+        amount_die = random.randint(1, 6)
+
+        stock = self.STOCK_DIE_MAPPING[stock_die]
+        action = self.ACTION_DIE_MAPPING[action_die]
+        amount = self.AMOUNT_DIE_MAPPING[amount_die]
+
+        self.roll_count += 1
+        self.dice_results = {
+            "stock": stock,
+            "action": action,
+            "amount": amount,
+            "roll_id": self.roll_count,
+            "timestamp": time.time()
+        }
+
+        # Apply the roll
+        result_message = self.handle_dice_roll(stock, action, amount)
+
+        # Advance turn
+        self.advance_dice_turn()
+
+        return {
+            "success": True,
+            "dice": {
+                "stock": stock,
+                "action": action,
+                "amount": amount,
+                "roll_id": self.roll_count
+            },
+            "result": result_message,
+            "auto": True
+        }
 
     def change_game_phase(self):
         """Transition between trading and dice phases"""
@@ -473,12 +548,24 @@ class GameState:
         if self.current_phase != "dice":
             return {"success": False, "error": "Not dice phase"}
 
-        # Allow auto-roll if player disconnected or dice timer is 0
+        # Check if player is disconnected
         player_disconnected = self.player_left_flags.get(str(self.current_turn), False)
-        instant_roll = self.dice_duration == 0
 
-        if player_slot is not None and str(player_slot) != str(
-                self.current_turn) and not player_disconnected and not instant_roll:
+        # Allow auto-rolls for disconnected players OR when called without player_slot (system roll)
+        # Also allow if dice duration is 0 (instant rolls)
+        instant_roll = self.dice_duration == 0
+        is_system_call = (player_slot is None)  # Called by perform_auto_roll()
+
+        # Allow the roll if:
+        # 1. Player is making their own roll (normal case)
+        # 2. Player is disconnected and system is rolling for them (auto-roll)
+        # 3. It's a system call (perform_auto_roll)
+        # 4. Instant roll mode is enabled
+        if (player_slot is not None and
+                str(player_slot) != str(self.current_turn) and
+                not player_disconnected and
+                not is_system_call and
+                not instant_roll):
             return {"success": False, "error": "Not your turn"}
 
         stock_die = random.randint(1, 6)
@@ -502,14 +589,18 @@ class GameState:
         result = self.handle_dice_roll(stock, action, amount)
 
         player_name = self.get_player_name(self.current_turn)
+        is_disconnected = self.player_left_flags.get(str(self.current_turn), False)
 
-        # Create history message based on action
+        # Create history message
+        if is_disconnected:
+            history_msg = f"🤖 {player_name} (offline) rolled: "
+        else:
+            history_msg = f"🎲 {player_name} rolled: "
+
         if action == 'div':
-            # Check stock price and ownership for dividend message
             if self.stocks[stock] <= 1.00:
-                history_msg = f"🎲 {player_name} rolled: {stock} dividend - dividends not payable."
+                history_msg += f"{stock} dividend - dividends not payable."
             else:
-                # Find players who own this stock
                 owners = []
                 for slot in self.get_active_slots():
                     slot_str = str(slot)
@@ -518,13 +609,13 @@ class GameState:
 
                 if owners:
                     owners_list = ", ".join(owners)
-                    history_msg = f"🎲 {player_name} rolled: {stock} paid ${amount / 100:.2f} dividend per share - dividends paid to: {owners_list}"
+                    history_msg += f"{stock} paid ${amount / 100:.2f} dividend per share - dividends paid to: {owners_list}"
                 else:
-                    history_msg = f"🎲 {player_name} rolled: {stock} dividend - Nobody owns {stock}."
+                    history_msg += f"{stock} dividend - Nobody owns {stock}."
         elif action == 'up':
-            history_msg = f"🎲 {player_name} rolled: {stock} moved UP {amount}¢"
+            history_msg += f"{stock} moved UP {amount}¢"
         else:
-            history_msg = f"🎲 {player_name} rolled: {stock} moved DOWN {amount}¢"
+            history_msg += f"{stock} moved DOWN {amount}¢"
 
         self.add_history_entry('roll', history_msg)
 
@@ -534,7 +625,8 @@ class GameState:
             "success": True,
             "dice": {"stock": stock, "action": action, "amount": amount, "roll_id": self.roll_count},
             "result": result,
-            "advance": advance_result
+            "advance": advance_result,
+            "auto": player_disconnected or is_system_call
         }
 
     def handle_dice_roll(self, stock, action, amount):
