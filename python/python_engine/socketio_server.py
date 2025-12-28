@@ -86,12 +86,25 @@ async def join_game(sid, data):
         game_id = str(data.get('game_id', ''))
         player_id = str(data.get('player_id', ''))
         player_name = data.get('player_name', 'Unknown')
+        player_count = data.get('player_count', 4)
+
+        # CRITICAL FIX: Check if game is finished and reset it
+        if game_id in games:
+            game = games[game_id]
+            if game.game_over or game.game_status == 'finished':
+                logger.info(f"♻️ Game {game_id} was finished, resetting for new game...")
+                # Delete the old game and create a fresh one
+                del games[game_id]
+                game = GameState(player_count)
+                games[game_id] = game
+        else:
+            # Create new game
+            game = get_game(game_id, player_count)
 
         sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
         await sio.enter_room(sid, game_id)
-        game = get_game(game_id)
 
-        # FIX: Find existing slot if player is reconnecting
+        # Rest of the existing join logic...
         existing_slot = None
         for slot, p in game.players.items():
             if p.get('player_id') == player_id:
@@ -99,16 +112,14 @@ async def join_game(sid, data):
                 break
 
         if existing_slot:
-            # Re-activate existing player
             game.players[existing_slot]['has_left'] = False
             if str(existing_slot) in game.player_left_flags:
                 game.player_left_flags[str(existing_slot)] = False
             logger.info(f"♻️ Player {player_name} reconnected to slot {existing_slot}")
         else:
-            # New player join
-            game.add_player(player_id, player_name)
+            result = game.add_player(player_id, player_name)
+            logger.info(f"✅ Player {player_name} joined: {result}")
 
-        # Send result
         await sio.emit('join_result', {
             'success': True,
             'game_state': game.get_game_state()
@@ -118,6 +129,10 @@ async def join_game(sid, data):
 
     except Exception as e:
         logger.error(f"❌ Error in join_game: {str(e)}")
+        await sio.emit('join_result', {
+            'success': False,
+            'error': str(e)
+        }, room=sid)
 
 
 @sio.event

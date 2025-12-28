@@ -23,6 +23,7 @@ const AUDIO_PATHS = {
 /* ===== Game Page State Guards ===== */
 let isRedirecting = false;
 let lastPhase = null;
+let redirectLockTimeout = null;
 
 /* ===== HELPER FUNCTIONS ===== */
 function playSound(pathOrCategory) {
@@ -91,7 +92,31 @@ function setupSocketHandlers() {
     gameSocket.socket.on('join_result', (data) => {
         console.log('📥 Join result:', data);
         if (data.success && data.game_state) {
-            handleGameStateUpdate(data.game_state);
+            // CRITICAL FIX: Extract and set the player slot immediately
+            const state = data.game_state;
+            if (state.players) {
+                for (const [slot, player] of Object.entries(state.players)) {
+                    if (player.player_id === window.currentPlayerId) {
+                        window.currentPlayerSlot = parseInt(slot);
+                        gameSocket.playerSlot = parseInt(slot);
+                        console.log(`✅ Player slot identified: ${window.currentPlayerSlot}`);
+                        break;
+                    }
+                }
+            }
+
+            // Now process the game state
+            handleGameStateUpdate(state);
+
+            // Force enable controls if in trading phase
+            if (state.current_phase === 'trading' && !state.game_over) {
+                console.log('🔓 Enabling trading controls after join...');
+                setTimeout(() => {
+                    enableTradingControls();
+                    updateRollButton();
+                    updateCostDisplay();
+                }, 100);
+            }
         }
     });
 
@@ -119,45 +144,88 @@ function setupSocketHandlers() {
     };
 }
 
+// Also update handleGameStateUpdate to ensure slot is always set
 function handleGameStateUpdate(state) {
-    if (!state || (typeof isRedirecting !== 'undefined' && isRedirecting)) return;
-    const isWaitingRoom = window.location.pathname.includes('waiting_room.php');
-    const isGamePage = window.location.pathname.includes('game.php');
-
-    if (state.game_over) {
-        isRedirecting = true;
-        window.location.href = `game_over.php?game_id=${window.gameId}`;
-        return;
-    }
-
-    console.log("📥 Processing game state:", state);
-
-    if (state.status === 'active' && isWaitingRoom) {
-        isRedirecting = true;
-        console.log("🚀 Game is active! Moving to board...");
-        window.location.href = 'game.php';
-        return;
-    }
-
-    if (state.status === 'waiting' && isGamePage && state.current_round === 0) {
-        isRedirecting = true;
-        console.warn("⚠️ Game not started yet. Returning to waiting room...");
-        window.location.href = 'waiting_room.php';
-        return;
-    }
-
-    if (isRedirecting) return;
-
     if (!state) {
         console.error('❌ No state provided!');
         return;
     }
 
+    // Prevent processing during redirect
+    if (isRedirecting) {
+        console.log('⏸️ Redirect in progress, skipping state update');
+        return;
+    }
+
+    const isWaitingRoom = window.location.pathname.includes('waiting_room.php');
+    const isGamePage = window.location.pathname.includes('game.php');
+
+    console.log("📥 Processing game state:", {
+        status: state.status,
+        phase: state.current_phase,
+        round: state.current_round,
+        game_over: state.game_over,
+        current_page: isWaitingRoom ? 'waiting_room' : 'game'
+    });
+
     // Check if game is over
     if (state.game_over) {
-        console.log('Game is over, redirecting...');
-        window.location.href = `game_over.php?game_id=${window.gameId}`;
+        if (!isRedirecting) {
+            isRedirecting = true;
+            console.log('🏁 Game is over, redirecting...');
+            setTimeout(() => {
+                window.location.href = `game_over.php?game_id=${window.gameId}`;
+            }, 500);
+        }
         return;
+    }
+
+    // REDIRECT LOGIC - with anti-loop protection
+    if (isWaitingRoom) {
+        // Only redirect from waiting room if game is BOTH active AND past round 0
+        if (state.status === 'active' && state.current_round >= 1) {
+            if (!isRedirecting) {
+                isRedirecting = true;
+                console.log("🚀 Game is active (round " + state.current_round + "), moving to game board...");
+                setTimeout(() => {
+                    window.location.href = 'game.php';
+                }, 500);
+            }
+            return;
+        }
+    }
+
+    if (isGamePage) {
+        // CRITICAL: Only redirect back to waiting room if BOTH conditions are true
+        // AND we haven't recently redirected
+        if (state.status === 'waiting' && state.current_round === 0) {
+            // Add a safety check - don't redirect if we just loaded this page
+            const pageLoadTime = window.performance?.timing?.navigationStart || Date.now();
+            const timeSinceLoad = Date.now() - pageLoadTime;
+
+            if (timeSinceLoad > 2000 && !isRedirecting) { // Wait at least 2 seconds
+                isRedirecting = true;
+                console.warn("⚠️ Game not started yet. Returning to waiting room...");
+                setTimeout(() => {
+                    window.location.href = 'waiting_room.php';
+                }, 500);
+            } else {
+                console.log('⏸️ Ignoring redirect (page just loaded or already redirecting)');
+            }
+            return;
+        }
+    }
+
+    // DEFENSIVE: Always try to identify player slot if not set
+    if ((window.currentPlayerSlot === null || window.currentPlayerSlot === undefined) && state.players) {
+        for (const [slot, player] of Object.entries(state.players)) {
+            if (player.player_id === window.currentPlayerId) {
+                window.currentPlayerSlot = parseInt(slot);
+                gameSocket.playerSlot = parseInt(slot);
+                console.log(`✅ Player slot identified in state update: ${window.currentPlayerSlot}`);
+                break;
+            }
+        }
     }
 
     const previousPhase = window.currentPhase;
@@ -166,21 +234,6 @@ function handleGameStateUpdate(state) {
     // Update global state
     window.currentPhase = state.current_phase;
     window.currentTurn = state.current_turn;
-
-    // detect player slot if not set
-    if (window.currentPlayerSlot === null || window.currentPlayerSlot === undefined) {
-        if (state.players) {
-            for (const [slot, player] of Object.entries(state.players)) {
-                if (player.player_id === window.currentPlayerId) {
-                    window.currentPlayerSlot = parseInt(slot);
-                    console.log(`✅ Identified as Player Slot: ${window.currentPlayerSlot}`);
-                    // Now that we have a slot, refresh the buttons
-                    updateRollButton();
-                    break;
-                }
-            }
-        }
-    }
 
     // Detect phase change
     if (previousPhase && previousPhase !== window.currentPhase) {
@@ -204,8 +257,8 @@ function handleGameStateUpdate(state) {
     if (state.players) {
         updatePlayerCardsUI(state.players, state.stocks);
 
-        const mySlot = window.currentPlayerSlot.toString();
-        if (state.players[mySlot]) {
+        const mySlot = window.currentPlayerSlot?.toString();
+        if (mySlot && state.players[mySlot]) {
             window.currentPlayerCash = state.players[mySlot].cash || 0;
 
             // Update done trading state
@@ -229,7 +282,6 @@ function handleGameStateUpdate(state) {
 
     // CRITICAL: Enable/disable controls based on current phase
     if (state.current_phase === 'trading') {
-        // Check if player is done trading
         const mySlot = window.currentPlayerSlot?.toString();
         const isDone = mySlot && state.players[mySlot]?.done_trading;
 
@@ -270,7 +322,7 @@ function updatePlayerCardsUI(players, stocks) {
         const p = players[slot];
         if (!p.player_id) return;
 
-        const isMe = (window.currentPlayerName === p.name);
+        const isMe = (p.player_id === window.currentPlayerId);
         const isOff = p.has_left || false;
         const isDone = p.done_trading || false;
 

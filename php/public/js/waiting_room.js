@@ -129,19 +129,42 @@ function handleGameStateUpdate(state) {
 
     currentGameState = state;
 
-    // Check if game started
-    if (state.status === 'active') {
-        isRedirecting = true;
-        console.log('Game is active, redirecting to game...');
-        window.location.href = 'game.php';
+    console.log('📊 State update:', {
+        status: state.status,
+        round: state.current_round,
+        phase: state.current_phase,
+        game_over: state.game_over
+    });
+
+    // Check if game started - BOTH conditions must be true
+    if (state.status === 'active' && state.current_round >= 1) {
+        if (!isRedirecting) {
+            isRedirecting = true;
+            console.log('🎮 Game is active (round ' + state.current_round + '), redirecting to game...');
+
+            // Play sound
+            playGameStartSound();
+
+            // Show starting message
+            showStartingMessage();
+
+            // Redirect after animation
+            setTimeout(() => {
+                window.location.href = 'game.php';
+            }, 1500);
+        }
         return;
     }
 
     // Check if game is over
     if (state.game_over) {
-        isRedirecting = true;
-        console.log('Game is over, redirecting...');
-        window.location.href = `game_over.php?game_id=${window.gameId}`;
+        if (!isRedirecting) {
+            isRedirecting = true;
+            console.log('🏁 Game is over, redirecting...');
+            setTimeout(() => {
+                window.location.href = `game_over.php?game_id=${window.gameId}`;
+            }, 500);
+        }
         return;
     }
 
@@ -152,6 +175,21 @@ function handleGameStateUpdate(state) {
     updatePlayerList(state);
     updateHostControls(isHost, state);
 }
+
+// Also add a safety check at the top of the file
+let lastStateUpdate = 0;
+const STATE_UPDATE_THROTTLE = 100; // ms
+
+// Wrap the Socket.IO state handler with throttling
+gameSocket.onStateUpdate = (state) => {
+    const now = Date.now();
+    if (now - lastStateUpdate < STATE_UPDATE_THROTTLE) {
+        console.log('⏸️ Throttling state update');
+        return;
+    }
+    lastStateUpdate = now;
+    handleGameStateUpdate(state);
+};
 
 function updatePlayerList(state) {
     const playerList = document.getElementById('playerList');
