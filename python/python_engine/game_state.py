@@ -226,16 +226,15 @@ class GameState:
         player_slot = player_info["slot"]
         was_host = (php_player_id == self.first_player_id)
 
-        # Mark player as disconnected
+        # 1. Mark player as disconnected in the flags
         self.player_left_flags[player_slot] = True
 
-        # Keep name in player data for history
-        self.players[player_slot]["name"] = player_name
+        # 2. CRITICAL FIX: Update the player object so the JS UI sees it!
+        if player_slot in self.players:
+            self.players[player_slot]["has_left"] = True
+            self.players[player_slot]["name"] = player_name  # Ensure name stays
 
-        # Keep player_id -> slot mapping so they can rejoin
-        # (already in self.player_id_slots, so no need to add again)
-
-        # Remove from active sessions
+        # Remove from active sessions (this is what counts for "active_sessions" count)
         del self.player_names[php_player_id]
 
         self.add_history_entry('system', f"{player_name} disconnected")
@@ -244,12 +243,10 @@ class GameState:
         if was_host:
             self.reassign_host()
 
-        # During active game, ignore their done_trading vote
-        # Don't auto-mark them as done anymore
+        # During trading phase, handle their vote
         if self.current_phase == "trading":
             self.done_trading.discard(player_slot)
 
-        # Check active players (those still connected)
         active_sessions = len(self.player_names)
 
         # Only end game if ALL players disconnect

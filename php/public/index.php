@@ -1,19 +1,20 @@
 <?php
 
-use includes\GameClient;
 use includes\SessionManager;
 
 require_once '../includes/SessionManager.php';
-require_once '../includes/GameClient.php';
+require_once '../includes/env_loader.php';  // ← ADD THIS LINE
 
 $session = SessionManager::getInstance();
 
+// Clear session if requested
 if (isset($_GET['clear'])) {
     $session->leaveGame();
     header("Location: index.php");
     exit;
 }
 
+// If already in game, go to waiting room
 if ($session->isInGame()) {
     header("Location: waiting_room.php");
     exit;
@@ -22,7 +23,7 @@ if ($session->isInGame()) {
 $message = '';
 $error = '';
 
-// Check if this is a rematch with settings
+// Check if this is a rematch
 $isRematch = isset($_GET['rematch']) && $_GET['rematch'] === '1';
 $rematchSettings = null;
 if ($isRematch) {
@@ -34,7 +35,7 @@ if ($isRematch) {
     ];
 }
 
-// Handle form submissions
+// Handle form submissions - SIMPLIFIED
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'join') {
         $playerName = trim($_POST['player_name']);
@@ -48,60 +49,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($playerCount < 2 || $playerCount > 8) {
             $error = 'Player count must be between 2 and 8';
         } else {
+            // Generate player ID
             $playerId = 'p_' . substr(uniqid(), -8);
-            $client = new GameClient();
-            $stateResponse = $client->getGameState($gameId);
 
-            if (!isset($stateResponse['success']) || !$stateResponse['success']) {
-                // Game doesn't exist - create it
-                $response = $client->initializeGame($gameId, $playerId, $playerName, $playerCount);
-                $isFirstPlayer = true;
-            } else {
-                // Game exists - try to join (or rejoin)
-                $response = $client->joinGame($gameId, $playerId, $playerName);
-                $gameData = $stateResponse['data'] ?? [];
-                $existingPlayerCount = 0;
-                if (isset($gameData['players'])) {
-                    foreach ($gameData['players'] as $player) {
-                        if (!empty($player['player_id'])) {
-                            $existingPlayerCount++;
-                        }
-                    }
-                }
-                $isFirstPlayer = ($existingPlayerCount == 0);
+            // Store in session - Socket.IO will handle the actual join
+            $session->setPlayer($playerId, $playerName, $gameId);
+            $session->setFirstPlayer(true); // Will be corrected by Socket.IO
+
+            // Store rematch settings if applicable
+            if ($isRematch && $rematchSettings) {
+                $_SESSION['rematch_settings'] = $rematchSettings;
+                $_SESSION['player_count'] = $playerCount;
             }
 
-            if (isset($response['success']) && $response['success']) {
-                $serverAssignedName = $response['data']['player_name'] ?? $playerName;
-                $session->setPlayer($playerId, $serverAssignedName, $gameId);
-                $session->setFirstPlayer($isFirstPlayer);
-
-                // Store rematch settings in session if this is a rematch
-                if ($isRematch && $rematchSettings) {
-                    $_SESSION['rematch_settings'] = $rematchSettings;
-                }
-
-                // Check if this was a rejoin
-                $rejoined = $response['data']['rejoined'] ?? false;
-                if ($rejoined) {
-                    $_SESSION['rejoin_message'] = $response['data']['message'] ?? 'Welcome back!';
-                }
-
-                header("Location: waiting_room.php");
-                exit;
-            } else {
-                $error = $response['error'] ?? 'Failed to join game. Please try again.';
-            }
+            header("Location: waiting_room.php");
+            exit;
         }
     }
 }
 
+// Generate default game ID
 $digits = '';
 for ($i = 0; $i < 4; $i++) {
     $digits .= mt_rand(0, 9);
 }
 
 $defaultGameId = isset($_GET['game']) ? htmlspecialchars($_GET['game']) : $digits;
+
+// Get Socket.IO server URL from environment
+$socketioServer = getenv('SOCKETIO_SERVER') ?: 'http://127.0.0.1:9999';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -111,6 +87,10 @@ $defaultGameId = isset($_GET['game']) ? htmlspecialchars($_GET['game']) : $digit
     <title>Stock Ticker - Lobby</title>
     <link rel="stylesheet" href="css/index_style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        // Global config for Socket.IO server
+        window.SOCKETIO_SERVER = '<?= $socketioServer ?>';
+    </script>
     <script src="js/game_socketio.js"></script>
 </head>
 <body>

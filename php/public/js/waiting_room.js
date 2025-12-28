@@ -1,180 +1,274 @@
 /**
- * Waiting Room JavaScript (Socket.IO Version)
- * Real-time player updates and game start handling
+ * Waiting Room JavaScript (Socket.IO Only Version)
+ * All game logic handled via Socket.IO - no PHP backend calls
  */
 
 let lastPlayerCount = 0;
+let currentGameState = null;
+let isHost = false;
+let isJoining = false;
+let isRedirecting = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeWaitingRoom();
-    loadSavedSettings();
-});
+    console.log('🎮 Initializing Waiting Room...');
 
-function initializeWaitingRoom() {
-    // Get initial player count
-    const playerItems = document.querySelectorAll('.player-item');
-    lastPlayerCount = playerItems.length;
-
-    // Setup game socket event handlers for waiting room
-    if (gameSocket) {
-        // Handle state updates
-        gameSocket.onStateUpdate = handleWaitingRoomUpdate;
-
-        // Handle game started event
-        gameSocket.socket.on('game_started', () => {
-            console.log('🎮 Game starting!');
-            playSound('/stock_ticker/audio/game-start.mp3');
-
-            // Show starting message
-            showStartingMessage();
-
-            // Redirect after brief delay
-            setTimeout(() => {
-                window.location.href = 'game.php';
-            }, 1500);
-        });
-
-        // Join the game room if we have credentials
-        if (window.gameId && window.playerId) {
-            const playerName = document.querySelector('.player-name')?.textContent.trim() || 'Player';
-
-            console.log('Joining waiting room:', {
-                gameId: window.gameId,
-                playerId: window.playerId,
-                playerName: playerName
-            });
-
-            gameSocket.joinGame(
-                window.gameId,
-                window.playerId,
-                playerName
-            );
-        }
+    // Initialize Socket.IO client
+    if (!window.gameSocket) {
+        window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER || 'http://127.0.0.1:9999');
     }
 
-    // Add event listeners to save settings when changed
+    // Connect to server
+    gameSocket.connect();
+
+    // Set up event handlers
+    setupSocketHandlers();
+
+    // Join the game via Socket.IO
+    setTimeout(() => {
+        joinGameViaSocket();
+    }, 500);
+
+    // Load saved settings
+    loadSavedSettings();
+
+    // Setup UI listeners
     const settingInputs = document.querySelectorAll(
         'input[name="max_rounds"], input[name="trading_duration"], input[name="dice_duration"], input[name="starting_cash"]'
     );
     settingInputs.forEach(input => {
         input.addEventListener('input', saveCurrentSettings);
     });
+
+    console.log('✅ Waiting Room Initialized');
+});
+
+function setupSocketHandlers() {
+    // Handle connection status
+    gameSocket.onConnectionChange = (connected) => {
+        console.log(connected ? '✅ Connected to server' : '❌ Disconnected from server');
+
+        if (connected && window.gameId && window.playerId) {
+            // Rejoin if we reconnect, but only if we aren't already joining
+            if (!isJoining) {
+                console.log('🔄 Re-establishing session...');
+                joinGameViaSocket();
+            }
+        }
+    };
+
+    // Handle join result
+    gameSocket.socket.on('join_result', (data) => {
+        console.log('Join result:', data);
+        isJoining = false; // Release the guard
+
+        if (data.success) {
+            const state = data.game_state;
+            handleGameStateUpdate(state);
+        } else {
+            console.error('Failed to join game:', data.error);
+            // Only redirect to index if it's a critical error (like game doesn't exist)
+            if (data.error && data.error.includes("not found")) {
+                window.location.href = 'index.php';
+            }
+        }
+    });
+
+    // Handle state updates
+    gameSocket.onStateUpdate = (state) => {
+        console.log('📊 State update received');
+        handleGameStateUpdate(state);
+    };
+
+    // Handle game started
+    gameSocket.socket.on('game_started', () => {
+        if (isRedirecting) return;
+        isRedirecting = true;
+
+        console.log('🎮 Game starting!');
+        showStartingMessage();
+
+        setTimeout(() => {
+            window.location.href = 'game.php';
+        }, 1500);
+    });
+
+    // Handle errors
+    gameSocket.onError = (message) => {
+        console.error('Socket error:', message);
+        // Alerting here can sometimes cause loops if it triggers on every retry
+        // Consider a UI toast instead of a blocking alert
+    };
 }
 
-/**
- * Handle game state updates in waiting room
- */
-function handleWaitingRoomUpdate(state) {
-    console.log('Waiting room state update:', state);
+function joinGameViaSocket() {
+    if (isJoining || isRedirecting) return;
 
-    // Check if game has started
+    if (!window.gameId || !window.playerId || !window.playerName) {
+        console.error('Missing game credentials');
+        return;
+    }
+
+    isJoining = true;
+
+    console.log('Joining game via Socket.IO:', {
+        gameId: window.gameId,
+        playerId: window.playerId,
+        playerName: window.playerName
+    });
+
+    gameSocket.joinGame(
+        window.gameId,
+        window.playerId,
+        window.playerName,
+        window.maxPlayers || 4
+    );
+}
+
+function handleGameStateUpdate(state) {
+    if (!state || isRedirecting) return;
+
+    currentGameState = state;
+
+    // Check if game started
     if (state.status === 'active') {
-        console.log('Game is active, redirecting...');
+        isRedirecting = true;
+        console.log('Game is active, redirecting to game...');
         window.location.href = 'game.php';
         return;
     }
 
     // Check if game is over
     if (state.game_over) {
+        isRedirecting = true;
         console.log('Game is over, redirecting...');
         window.location.href = `game_over.php?game_id=${window.gameId}`;
         return;
     }
 
-    // Count active players
-    let currentPlayerCount = 0;
-    const playerSlots = state.players || {};
+    // Determine if we're the host
+    isHost = (state.host_player_id === window.playerId);
 
-    for (const slot in playerSlots) {
-        const player = playerSlots[slot];
-        if (player.player_id && player.is_active) {
-            currentPlayerCount++;
-        }
-    }
-
-    console.log(`Player count: ${currentPlayerCount} (was ${lastPlayerCount})`);
-
-    // Reload page if player count changed
-    if (currentPlayerCount !== lastPlayerCount) {
-        console.log('Player count changed, reloading...');
-        location.reload();
-    }
-
-    // Update player list dynamically (optional - more advanced)
-    updatePlayerList(playerSlots);
+    // Update UI components
+    updatePlayerList(state);
+    updateHostControls(isHost, state);
 }
 
-/**
- * Update player list without full page reload
- */
-function updatePlayerList(players) {
-    const playerListContainer = document.querySelector('.player-list');
-    if (!playerListContainer) return;
+function updatePlayerList(state) {
+    const playerList = document.getElementById('playerList');
+    const playerCountEl = document.getElementById('playerCount');
 
-    // Clear current list
-    playerListContainer.innerHTML = '';
+    if (!playerList) return;
+
+    const players = state.players || {};
+    const maxPlayers = state.player_count || window.maxPlayers || 4;
 
     let activePlayers = 0;
-    const maxPlayers = window.maxPlayers || 4;
+    let html = '';
 
-    // Add active players
-    for (const slot in players) {
+    // Convert slots to array and sort to maintain order
+    const slots = Object.keys(players).sort();
+
+    slots.forEach(slot => {
         const player = players[slot];
-        if (!player.player_id || !player.is_active) continue;
+        if (!player.player_id) return;
 
         activePlayers++;
 
-        const isYou = player.player_id === window.playerId;
-        const isHost = player.player_id === window.hostPlayerId;
+        const isYou = (player.player_id === window.playerId);
+        const isHostPlayer = (player.player_id === state.host_player_id);
         const isDisconnected = player.has_left || false;
 
         const itemClass = 'player-item' +
             (isYou ? ' you' : '') +
-            (isHost ? ' host' : '');
+            (isHostPlayer ? ' host' : '') +
+            (isDisconnected ? ' disconnected' : '');
 
-        const playerDiv = document.createElement('div');
-        playerDiv.className = itemClass;
-        playerDiv.innerHTML = `
-            <div class="player-name">
-                ${escapeHtml(player.name)}
-                ${isYou ? '<span class="player-badge you">You</span>' : ''}
-                ${isHost ? '<span class="player-badge host">Host</span>' : ''}
-                ${isDisconnected ? '<span class="player-badge disconnected">Disconnected</span>' : ''}
+        html += `
+            <div class="${itemClass}">
+                <div class="player-name">
+                    ${escapeHtml(player.name)}
+                    ${isYou ? '<span class="player-badge you">You</span>' : ''}
+                    ${isHostPlayer ? '<span class="player-badge host">Host</span>' : ''}
+                    ${isDisconnected ? '<span class="player-badge disconnected">OFFLINE</span>' : ''}
+                </div>
+                <div class="player-status">${isDisconnected ? '⌛ Wait' : 'Ready ✅'}</div>
             </div>
-            <div style="font-weight: bold;">Ready ✅</div>
         `;
-
-        playerListContainer.appendChild(playerDiv);
-    }
+    });
 
     // Add empty slots
     for (let i = activePlayers; i < maxPlayers; i++) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'empty-slot';
-        emptyDiv.textContent = 'Waiting for player...';
-        playerListContainer.appendChild(emptyDiv);
+        html += '<div class="empty-slot">Waiting for player...</div>';
     }
 
-    // Update player count display
-    const playerCountEl = document.getElementById('playerCount');
+    playerList.innerHTML = html;
+
     if (playerCountEl) {
         playerCountEl.textContent = activePlayers;
-    }
-
-    // Update start button state
-    const startButton = document.querySelector('.start-button');
-    if (startButton && window.isFirstPlayer) {
-        const canStart = activePlayers >= 2;
-        startButton.disabled = !canStart;
-        startButton.textContent = canStart ? 'Start Game' : '⛔ Need 2+ Players';
     }
 
     lastPlayerCount = activePlayers;
 }
 
-/**
- * Show game starting animation/message
- */
+function updateHostControls(isHostPlayer, state) {
+    const hostControls = document.getElementById('hostControls');
+    const hostSidebar = document.getElementById('hostSidebar');
+    const waitingMessage = document.getElementById('waitingMessage');
+    const startBtn = document.getElementById('startGameBtn');
+
+    const activePlayers = state.active_player_count || 0;
+    const canStart = (activePlayers >= 2);
+
+    if (isHostPlayer) {
+        // Show host controls
+        if (hostControls) hostControls.style.display = 'block';
+        if (hostSidebar) hostSidebar.style.display = 'block';
+        if (waitingMessage) waitingMessage.style.display = 'none';
+
+        // Update start button
+        if (startBtn) {
+            startBtn.disabled = !canStart;
+            startBtn.textContent = canStart ? 'Start Game' : '⛔ Need 2+ Players';
+        }
+    } else {
+        // Show waiting message for non-hosts
+        if (hostControls) hostControls.style.display = 'none';
+        if (hostSidebar) hostSidebar.style.display = 'none';
+        if (waitingMessage) waitingMessage.style.display = 'block';
+    }
+}
+
+function startGame() {
+    if (!isHost) {
+        alert('Only the host can start the game');
+        return;
+    }
+
+    if (!confirm('Start the game now?')) {
+        return;
+    }
+
+    // Gather settings
+    const settings = {
+        max_rounds: parseInt(document.getElementById('hidden_max_rounds')?.value || 15),
+        trading_duration: parseInt(document.getElementById('hidden_trading_duration')?.value || 2),
+        dice_duration: parseInt(document.getElementById('hidden_dice_duration')?.value || 15),
+        starting_cash: parseInt(document.getElementById('hidden_starting_cash')?.value || 5000)
+    };
+
+    console.log('Starting game with settings:', settings);
+
+    // Start via Socket.IO
+    gameSocket.startGame(settings);
+
+    // Disable button
+    const startBtn = document.getElementById('startGameBtn');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = '🎮 Starting...';
+    }
+}
+
 function showStartingMessage() {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -207,45 +301,16 @@ function showStartingMessage() {
     document.body.appendChild(overlay);
 }
 
-/**
- * Handle start game button click
- */
-function confirmStart() {
-    if (!confirm('Start the game now?')) {
-        return false;
+function playGameStartSound() {
+    try {
+        const audio = new Audio('/stock_ticker/audio/game-start.mp3');
+        audio.play().catch(e => console.log('Audio playback blocked:', e));
+    } catch (e) {
+        console.log('Could not play game start sound:', e);
     }
-
-    // Gather settings from form
-    const settings = {
-        max_rounds: parseInt(document.getElementById('hidden_max_rounds')?.value || 15),
-        trading_duration: parseInt(document.getElementById('hidden_trading_duration')?.value || 2),
-        dice_duration: parseInt(document.getElementById('hidden_dice_duration')?.value || 15),
-        starting_cash: parseInt(document.getElementById('hidden_starting_cash')?.value || 5000)
-    };
-
-    console.log('Starting game with settings:', settings);
-
-    // Start game via Socket.IO
-    if (gameSocket && gameSocket.isConnected()) {
-        gameSocket.startGame(settings);
-    } else {
-        console.error('Socket not connected, falling back to form submission');
-        return true; // Allow form submission as fallback
-    }
-
-    // Disable button
-    const startButton = document.querySelector('.start-button');
-    if (startButton) {
-        startButton.disabled = true;
-        startButton.textContent = '🎮 Starting...';
-    }
-
-    return false; // Prevent form submission since we're using Socket.IO
 }
 
-/**
- * Settings persistence
- */
+// Settings management
 function saveCurrentSettings() {
     const settings = {
         max_rounds: document.querySelector('input[name="max_rounds"]')?.value || 15,
@@ -329,9 +394,6 @@ function resetSettings() {
     localStorage.removeItem('hostSettings');
 }
 
-/**
- * Copy game link to clipboard
- */
 function copyGameLink() {
     const input = document.getElementById('gameLink');
     const button = document.getElementById('copyButton');
@@ -379,25 +441,14 @@ function fallbackCopy(input, button) {
     }
 }
 
-/**
- * Utility function to escape HTML
- */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-/**
- * Play sound effect
- */
-function playSound(src) {
-    const audio = new Audio(src);
-    audio.play().catch(e => console.log('Audio blocked:', src));
-}
-
 // Make functions available globally
-window.confirmStart = confirmStart;
+window.startGame = startGame;
 window.copyGameLink = copyGameLink;
 window.resetSettings = resetSettings;
 window.updateSetting = updateSetting;

@@ -1,6 +1,6 @@
 """
 Socket.IO Game Server - FIXED VERSION
-Real-time game engine with proper auto-transitions
+Real-time game engine with proper auto-transitions and bug fixes
 """
 
 import socketio
@@ -25,6 +25,10 @@ sio.attach(app)
 
 # Game state storage
 games = {}
+
+# Map socket IDs to player info for disconnect handling
+# Format: { 'socket_id': {'game_id': '123', 'player_id': 1} }
+sid_map = {}
 
 
 def get_game(game_id, player_count=4):
@@ -52,50 +56,74 @@ async def connect(sid, environ):
 @sio.event
 async def disconnect(sid):
     """Handle client disconnection"""
-    logger.info(f"Client disconnected: {sid}")
+    # Check if we know this socket
+    if sid in sid_map:
+        info = sid_map[sid]
+        game_id = info['game_id']
+        player_id = info['player_id']
+
+        logger.info(f"Client disconnected: {sid} (Player {player_id} in Game {game_id})")
+
+        if game_id in games:
+            game = games[game_id]
+
+            # Mark player as removed/offline in the game logic
+            # This ensures 'has_left' becomes True in the state
+            game.remove_player(player_id)
+
+            # Broadcast the update so the UI redraws (showing "OFFLINE")
+            await emit_game_state(game_id)
+
+        # Clean up the map
+        del sid_map[sid]
+    else:
+        logger.info(f"Client disconnected: {sid} (Unknown)")
 
 
 @sio.event
 async def join_game(sid, data):
-    """
-    Player joins a game room
-    data: {game_id, player_id, player_name, player_count}
-    """
     try:
-        game_id = data['game_id']
-        player_id = data['player_id']
-        player_name = data['player_name']
-        player_count = data.get('player_count', 4)
+        game_id = str(data.get('game_id', ''))
+        player_id = str(data.get('player_id', ''))
+        player_name = data.get('player_name', 'Unknown')
 
-        # Enter the Socket.IO room
+        sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
         await sio.enter_room(sid, game_id)
-        logger.info(f"Player {player_name} ({sid}) joined game {game_id}")
+        game = get_game(game_id)
 
-        # Get or create game
-        game = get_game(game_id, player_count)
+        # FIX: Find existing slot if player is reconnecting
+        existing_slot = None
+        for slot, p in game.players.items():
+            if p.get('player_id') == player_id:
+                existing_slot = slot
+                break
 
-        # Check if this is a rejoin or new join
-        response = game.add_player(player_id, player_name)
+        if existing_slot:
+            # Re-activate existing player
+            game.players[existing_slot]['has_left'] = False
+            if str(existing_slot) in game.player_left_flags:
+                game.player_left_flags[str(existing_slot)] = False
+            logger.info(f"♻️ Player {player_name} reconnected to slot {existing_slot}")
+        else:
+            # New player join
+            game.add_player(player_id, player_name)
 
-        # Emit to the joining player
+        # Send result
         await sio.emit('join_result', {
             'success': True,
-            'data': response,
             'game_state': game.get_game_state()
         }, room=sid)
 
-        # Broadcast updated state to all players in the room
         await emit_game_state(game_id)
 
     except Exception as e:
-        logger.error(f"Error in join_game: {str(e)}")
-        await sio.emit('error', {'message': str(e)}, room=sid)
+        logger.error(f"❌ Error in join_game: {str(e)}")
 
 
 @sio.event
 async def leave_game(sid, data):
     """
-    Player leaves a game
+    Player manually leaves a game (clicks 'Leave Game' button)
     data: {game_id, player_id}
     """
     try:
@@ -104,6 +132,10 @@ async def leave_game(sid, data):
 
         game = get_game(game_id)
         result = game.remove_player(player_id)
+
+        # Remove from tracking map
+        if sid in sid_map:
+            del sid_map[sid]
 
         # Leave the Socket.IO room
         await sio.leave_room(sid, game_id)
@@ -117,6 +149,39 @@ async def leave_game(sid, data):
 
         # Broadcast updated state to remaining players
         await emit_game_state(game_id)
+
+        # Check if we need to auto-transition or auto-roll after player leaves
+        if game.game_status == 'active':
+            # If in trading phase and all remaining players are done, transition
+            if game.current_phase == 'trading' and game.check_trading_phase_complete():
+                logger.info(f"🔄 Trading complete after player left, changing phase...")
+                game.change_game_phase()
+                await sio.emit('phase_changed', {
+                    'new_phase': 'dice',
+                    'message': 'Trading complete! Moving to dice phase.'
+                }, room=game_id)
+                await emit_game_state(game_id)
+            
+            # If in dice phase and current player left, auto-roll
+            elif game.current_phase == 'dice':
+                current_turn_str = str(game.current_turn)
+                if game.player_left_flags.get(current_turn_str, False):
+                    logger.info(f"🎲 Current player left during their turn, auto-rolling...")
+                    result = game.perform_auto_roll()
+                    if result:
+                        dice_data = result.get('dice', {})
+                        player_name = game.get_player_name(game.current_turn)
+                        await sio.emit('dice_rolled', {
+                            'stock': dice_data.get('stock'),
+                            'action': dice_data.get('action'),
+                            'amount': dice_data.get('amount'),
+                            'roll_id': dice_data.get('roll_id'),
+                            'auto': True,
+                            'player': player_name,
+                            'player_disconnected': True
+                        }, room=game_id)
+                        await sio.sleep(2)
+                        await emit_game_state(game_id)
 
     except Exception as e:
         logger.error(f"Error in leave_game: {str(e)}")
@@ -233,6 +298,13 @@ async def done_trading(sid, data):
         if game.check_trading_phase_complete():
             logger.info(f"Trading complete in game {game_id}, changing phase...")
             game.change_game_phase()
+
+            # Ensure last_roll_time is set
+            if game.current_phase == 'dice' and game.last_roll_time is None:
+                import time
+                game.last_roll_time = time.time()
+                logger.info(f"  ↳ Initialized last_roll_time for dice phase")
+
             await sio.emit('phase_changed', {
                 'new_phase': 'dice',
                 'message': 'Trading complete! Time to roll!'
@@ -271,6 +343,13 @@ async def roll_dice(sid, data):
 
             # Wait a moment for animation, then send state update
             await sio.sleep(2)
+
+            # IMPORTANT: Ensure last_roll_time is updated after roll
+            if game.current_phase == 'dice' and game.last_roll_time is not None:
+                import time
+                game.last_roll_time = time.time()
+                logger.info(f"  ↳ Reset last_roll_time after manual roll")
+
             await emit_game_state(game_id)
 
             # Check if game is over
@@ -312,51 +391,73 @@ async def get_state(sid, data):
 # Background task to check for auto-actions
 async def background_game_monitor():
     """Monitor games for auto-transitions and disconnects"""
-    while True:
-        await sio.sleep(1)  # Check every 1 second for faster response
+    import time  # Ensure time is imported
+    logger.info("🎮 Background game monitor started!")
 
+    loop_counter = 0
+
+    while True:
+        await sio.sleep(0.5)  # Check every 0.5 seconds
+        loop_counter += 1
+
+        # --- 1. HEARTBEAT LOGIC (Every 10 seconds) ---
+        # 0.5s * 20 = 10 seconds
+        if loop_counter % 20 == 0:
+            active_ids = [gid for gid, g in games.items() if g.game_status == 'active']
+            if active_ids:
+                logger.info(f"💓 Monitor heartbeat - Active games: {active_ids}")
+
+        # --- 2. GAME MONITORING LOGIC ---
         for game_id, game in list(games.items()):
             if game.game_status != 'active':
                 continue
 
             changed = False
+            should_emit_state = False
 
-            # Check trading phase completion (TIMER EXPIRED)
-            if game.current_phase == 'trading' and game.check_trading_phase_complete():
-                logger.info(f"🔄 Auto-transition: Trading phase complete in {game_id}")
-                game.change_game_phase()
-                await sio.emit('phase_changed', {
-                    'new_phase': 'dice',
-                    'message': 'Trading time expired! Moving to dice phase.'
-                }, room=game_id)
-                changed = True
+            # A) Check trading phase completion
+            if game.current_phase == 'trading':
+                if game.check_trading_phase_complete():
+                    logger.info(f"🔄 AUTO-TRANSITION: Trading phase complete in {game_id}")
 
-            # Check for auto-roll (disconnected player or timer expired)
-            if game.current_phase == 'dice':
-                # DEBUG: Log current state
+                    # Verify players exist before transitioning
+                    active_count = len(game.get_connected_slots())
+                    if active_count > 0:
+                        game.change_game_phase()
+
+                        # Initialize timer for the first player in dice phase
+                        if game.current_phase == 'dice':
+                            game.last_roll_time = time.time()
+                            logger.info(f"  ↳ Set last_roll_time for dice phase")
+
+                        await sio.emit('phase_changed', {
+                            'new_phase': 'dice',
+                            'message': 'Trading complete! Moving to dice phase.'
+                        }, room=game_id)
+
+                        changed = True
+                        should_emit_state = True
+                    else:
+                        logger.info(f"  ↳ All players disconnected, ending game")
+                        game.end_game()
+                        changed = True
+                        should_emit_state = True
+
+            # B) Check for auto-roll (Timer or Disconnect)
+            elif game.current_phase == 'dice':
                 current_player = game.current_turn
                 player_name = game.get_player_name(current_player)
                 is_disconnected = game.player_left_flags.get(str(current_player), False)
 
-                logger.info(f"🎲 Dice phase check for {game_id}:")
-                logger.info(f"  ↳ Current turn: {current_player} ({player_name})")
-                logger.info(f"  ↳ Disconnected: {is_disconnected}")
-                logger.info(f"  ↳ Dice duration: {game.dice_duration}s")
-                logger.info(f"  ↳ Last roll time: {game.last_roll_time}")
-
                 if game.check_auto_roll_needed():
-                    logger.info(f"🎲 AUTO-ROLL TRIGGERED in {game_id} for {player_name}")
-
-                    if is_disconnected:
-                        logger.info(f"  ↳ Reason: Player is OFFLINE")
-                    else:
-                        logger.info(f"  ↳ Reason: Timer expired")
+                    reason = "OFFLINE" if is_disconnected else "TIMER EXPIRED"
+                    logger.info(f"🎲 AUTO-ROLL ({reason}) in {game_id} for {player_name}")
 
                     result = game.perform_auto_roll()
                     if result:
                         dice_data = result.get('dice', {})
-                        logger.info(f"  ↳ Dice result: {dice_data}")
 
+                        # Emit the roll event
                         await sio.emit('dice_rolled', {
                             'stock': dice_data.get('stock'),
                             'action': dice_data.get('action'),
@@ -366,20 +467,24 @@ async def background_game_monitor():
                             'player': player_name,
                             'player_disconnected': is_disconnected
                         }, room=game_id)
-                        changed = True
 
-                        # Wait for animation
+                        # Wait for animation to finish
                         await sio.sleep(2)
+
+                        # CRITICAL FIX: Reset timer for the NEXT player
+                        # If we don't do this, the next player times out immediately!
+                        game.last_roll_time = time.time()
+                        logger.info(f"  ↳ Reset last_roll_time for next player")
+
+                        changed = True
+                        should_emit_state = True
                     else:
                         logger.error(f"  ↳ FAILED to perform auto-roll!")
-                else:
-                    logger.info(f"  ↳ No auto-roll needed yet")
 
             # Broadcast state if changed
-            if changed:
+            if changed and should_emit_state:
                 await emit_game_state(game_id)
 
-                # Check for game over
                 if game.game_over:
                     logger.info(f"🏁 Game {game_id} ended")
                     await sio.emit('game_over', {
@@ -389,7 +494,12 @@ async def background_game_monitor():
 
 
 # Start background monitor
-sio.start_background_task(background_game_monitor)
+async def start_background_tasks(app):
+    """Start background tasks when server starts"""
+    app['game_monitor'] = sio.start_background_task(background_game_monitor)
+    logger.info("✅ Background game monitor started")
+
+app.on_startup.append(start_background_tasks)
 
 if __name__ == '__main__':
     logger.info("Starting Socket.IO game server on port 9999...")

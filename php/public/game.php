@@ -1,73 +1,27 @@
 <?php
 
-use includes\GameClient;
 use includes\SessionManager;
 
 require_once '../includes/SessionManager.php';
-require_once '../includes/GameClient.php';
+require_once '../includes/env_loader.php';  // ← ADD THIS LINE
 
-/* ===== INITIALIZATION & SESSION ===== */
+/* ===== SESSION CHECK ===== */
 $session = SessionManager::getInstance();
-$client = new GameClient();
+
+if (!$session->isInGame()) {
+    header("Location: index.php");
+    exit;
+}
 
 $gameId = $session->getGameId();
 $currentPlayerId = $session->getPlayerId();
 $currentPlayerName = $session->getPlayerName();
 
-$response = $client->getGameState($gameId);
-$gameState = $response['data'] ?? [];
-$gameState['players'] = $gameState['players'] ?? [];
-$gameState['stocks']  = $gameState['stocks']  ?? [];
-$totalPlayers = $gameState['active_player_count'] ?? 0;
+// Get Socket.IO server URL from environment
+$socketioServer = getenv('SOCKETIO_SERVER') ?: 'http://127.0.0.1:9999';
 
-/* ===== REDIRECTS & SAFEGUARDS ===== */
-if (!empty($gameState['game_over'])) {
-    $session->leaveGame();
-    header("Location: game_over.php?game_id=" . urlencode($gameId));
-    exit;
-}
-
-if (($gameState['status'] ?? '') === 'waiting') {
-    header("Location: waiting_room.php");
-    exit;
-}
-
-/* ===== PLAYER IDENTITY LOGIC ===== */
-$currentPlayerSlot = null;
-foreach ($gameState['players'] as $slot => $player) {
-    if (!empty($player['player_id']) && $player['player_id'] === $currentPlayerId) {
-        $currentPlayerSlot = (int)$slot;
-        if ($player['name'] !== $currentPlayerName) {
-            $_SESSION['player_name'] = $player['name'];
-            $currentPlayerName = $player['name'];
-        }
-        break;
-    }
-}
-
-if ($currentPlayerSlot === null) {
-    foreach ($gameState['players'] as $slot => $player) {
-        if (($player['name'] ?? '') === $currentPlayerName) {
-            $currentPlayerSlot = (int)$slot;
-            break;
-        }
-    }
-}
-
-if ($currentPlayerSlot === null) die("❌ Cannot determine your player slot.");
-
-/* ===== PHASE & UI VARS ===== */
-$currentPhase = $gameState['current_phase'] ?? 'trading';
-$currentTurn  = $gameState['current_turn'] ?? 0;
-$timeRemaining = (int)($gameState['time_remaining'] ?? 0);
-$timerDisplay  = sprintf("%02d:%02d", floor($timeRemaining / 60), $timeRemaining % 60);
-
-$isYourTurn    = ($currentTurn == $currentPlayerSlot);
-$isDicePhase   = ($currentPhase === 'dice');
-
-$currentPlayerData = $gameState['players'][$currentPlayerSlot] ?? [];
-$currentPlayerDoneTrading = $currentPlayerData['done_trading'] ?? false;
-$playersDoneTrading = $gameState['done_trading_count'] ?? 0;
+// All game state will be fetched via Socket.IO
+// No need to query the backend here
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,6 +34,7 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
 </head>
 <body>
 
+<!-- Header will be populated by JavaScript -->
 <div class="game-header">
     <div class="header-unified-bar">
         <div class="header-section identity">
@@ -88,92 +43,78 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
         </div>
 
         <div class="header-section phase-logic">
-            <?php if ($currentPhase === 'trading'): ?>
-                <span class="phase-label trading">🔄 TRADING</span>
-                <div class="timer" id="timer" data-remaining="<?= $timeRemaining ?>"><?= $timerDisplay ?></div>
-                <div class="players-status"><?= $playersDoneTrading ?>/<?= $totalPlayers ?> Ready</div>
-            <?php else: ?>
-                <span class="phase-label dice">🎲 DICE</span>
-                <div class="timer" id="timer" data-remaining="<?= $timeRemaining ?>"><?= $timerDisplay ?></div>
-                <div class="turn-status">
-                    <?= $isYourTurn ? '<span class="your-turn-pulse">YOUR TURN</span>' : 'WAITING...' ?>
-                </div>
-            <?php endif; ?>
+            <span class="phase-label trading">🔄 LOADING...</span>
+            <div class="timer" id="timer">--:--</div>
+            <div class="players-status">0/0</div>
         </div>
 
         <div class="header-section progress-exit">
-            <span class="round-display">Round <?= $gameState['current_round'] ?? 1 ?>/<?= $gameState['max_rounds'] ?? 1 ?></span>
+            <span class="round-display">Round 1/1</span>
             <a href="leave_game.php" class="btn-leave" onclick="return confirm('Leave game?')">LEAVE</a>
         </div>
     </div>
 </div>
 
-<div class="action-form <?= ($currentPlayerDoneTrading && $currentPhase === 'trading') ? 'form-disabled' : '' ?>">
+<!-- Action Form -->
+<div class="action-form">
     <div class="form-row three-columns">
+        <!-- Roll Column -->
         <div class="form-column column-roll">
-            <button type="button" id="btnRollDice" class="btn-roll-ready"></button>
+            <button type="button" id="btnRollDice" class="btn-roll-ready" disabled>⏳ Loading...</button>
         </div>
 
+        <!-- Trade Column -->
         <div class="form-column column-trade">
             <form id="tradeForm" class="trade-form">
                 <div class="trade-controls">
-                    <select name="stock" id="stockSelect" class="stock-select" required <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>
-                        <?php
-                        $stocks = [
-                                'Gold' => '#fde68a',
-                                'Silver' => '#d8dcdf',
-                                'Oil' => '#b3bce5',
-                                'Bonds' => '#a8d2f0',
-                                'Industrials' => '#dcc2e8',
-                                'Grain' => '#f6bfa6'
-                        ];
-                        foreach($stocks as $name => $color): ?>
-                            <option value="<?= $name ?>" style="background-color: <?= $color ?>; ">
-                                <?= $name ?>
-                            </option>
-                        <?php endforeach; ?>
+                    <select name="stock" id="stockSelect" class="stock-select" required disabled>
+                        <option value="Gold" style="background-color: #fde68a;">Gold</option>
+                        <option value="Silver" style="background-color: #d8dcdf;">Silver</option>
+                        <option value="Oil" style="background-color: #b3bce5;">Oil</option>
+                        <option value="Bonds" style="background-color: #a8d2f0;">Bonds</option>
+                        <option value="Industrials" style="background-color: #dcc2e8;">Industrials</option>
+                        <option value="Grain" style="background-color: #f6bfa6;">Grain</option>
                     </select>
 
                     <div class="amount-controls">
                         <div class="custom-number-input">
                             <input type="number" name="amount" value="500" class="amount-input" readonly>
                             <div class="spin-buttons">
-                                <button type="button" class="spin-btn spin-up" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>▲</button>
-                                <button type="button" class="spin-btn spin-down" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>▼</button>
+                                <button type="button" class="spin-btn spin-up" disabled>▲</button>
+                                <button type="button" class="spin-btn spin-down" disabled>▼</button>
                             </div>
                         </div>
                         <div class="share-quick-buttons">
-                            <?php foreach([500 => '500', 1000 => '1K', 2000 => '2K', 5000 => '5K'] as $val => $lbl): ?>
-                                <button type="button" class="qty-btn" data-amount="<?= $val ?>" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>><?= $lbl ?></button>
-                            <?php endforeach; ?>
+                            <button type="button" class="qty-btn" data-amount="500" disabled>500</button>
+                            <button type="button" class="qty-btn" data-amount="1000" disabled>1K</button>
+                            <button type="button" class="qty-btn" data-amount="2000" disabled>2K</button>
+                            <button type="button" class="qty-btn" data-amount="5000" disabled>5K</button>
                         </div>
                     </div>
 
                     <input type="text" id="costDisplay" class="cost-display" value="COST: $0.00" readonly>
 
                     <div class="trade-action-buttons">
-                        <button type="button" name="action" id="btnBuy" class="btn-buy" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Buy</button>
-                        <button type="button" name="action" id="btnSell" class="btn-sell" <?= ($currentPlayerDoneTrading || $isDicePhase) ? 'disabled' : '' ?>>Sell</button>
+                        <button type="button" id="btnBuy" class="btn-buy" disabled>Buy</button>
+                        <button type="button" id="btnSell" class="btn-sell" disabled>Sell</button>
                     </div>
                 </div>
             </form>
         </div>
 
+        <!-- Done Column -->
         <div class="form-column column-done">
             <div class="done-trading-section">
-                <form method="POST" id="doneTradingForm">
+                <form id="doneTradingForm">
                     <input type="hidden" name="done_trading" value="1">
-                    <div class="done-trading-control <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
+                    <div class="done-trading-control">
                         <div class="checkbox-header">
-                            <label><?= $currentPlayerDoneTrading ? 'Trading Complete' : 'Done Trading?' ?></label>
+                            <label>Done Trading?</label>
                         </div>
                         <div class="checkbox-wrapper">
-                            <input type="checkbox"
-                                   id="doneTradingCheckbox"
-                                   style="display:none;"
-                                    <?= $currentPlayerDoneTrading ? 'disabled checked' : '' ?>>
+                            <input type="checkbox" id="doneTradingCheckbox" style="display:none;" disabled>
                             <label for="doneTradingCheckbox" class="checkbox-label">
-                                <div class="checkbox-box <?= $currentPlayerDoneTrading ? 'checked' : '' ?>">
+                                <div class="checkbox-box">
                                     <span class="checkmark">✓</span>
                                 </div>
                             </label>
@@ -185,6 +126,7 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     </div>
 </div>
 
+<!-- Stock Price Board -->
 <div class="stocks_display">
     <table class="stock-price-table">
         <thead>
@@ -202,21 +144,15 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
                 'Bonds' => 'bonds', 'Indust.' => 'industrials', 'Grain' => 'grain'
         ];
         foreach ($rows as $name => $class):
-            $actualKey = ($name === 'Indust.') ? 'Industrials' : $name;
-            $curCents = ($gameState['stocks'][$actualKey] ?? 1.00) * 100;
             ?>
             <tr class="stock-row <?= $class ?>-row">
                 <th class="stock-header <?= $class ?>-header"><?= $name ?></th>
                 <?php for ($pC = 0; $pC <= 200; $pC += 5):
-                    $active = (abs($curCents - $pC) < 2.5);
                     $special = in_array($pC, [0, 100, 200]);
                     $label = ($pC === 0) ? 'Off Market' : (($pC === 100) ? 'Par' : (($pC === 200) ? 'Split' : ''));
                     ?>
-                    <td class="price-cell <?= $active ? 'current-price' : '' ?> <?= $special ? 'price-cell-special' : '' ?>"
+                    <td class="price-cell <?= $special ? 'price-cell-special' : '' ?>"
                         data-stock="<?= $name ?>" data-price="<?= $pC ?>" data-label="<?= $label ?>">
-                        <?php if ($active): ?>
-                            <div class="price-marker"><?= $pC ?></div>
-                        <?php endif; ?>
                     </td>
                 <?php endfor; ?>
             </tr>
@@ -225,66 +161,28 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     </table>
 </div>
 
+<!-- Player Cards -->
 <div class="players">
-    <div class="players-container">
-        <?php foreach ($gameState['players'] as $slot => $p):
-            if (empty($p['player_id'])) continue;
-            $isMe = ($currentPlayerName === $p['name']);
-            $off = $p['has_left'] ?? false;
-            $done = $p['done_trading'] ?? false;
-            ?>
-            <div class="player-card <?= $isMe ? 'current-player' : '' ?> <?= $off ? 'disconnected' : '' ?>">
-                <div class="player-header-row">
-                    <div class="player-identity">
-                        <span class="player-name"><?= htmlspecialchars($p['name']) ?></span>
-                        <?= $isMe ? '<span class="you-badge">YOU</span>' : '' ?>
-                        <?= $off ? '<span class="disconnected-badge">OFFLINE</span>' : '' ?>
-                        <?= ($done && $currentPhase === 'trading') ? '<span class="done-check">✅</span>' : '' ?>
-                    </div>
-                    <div class="player-cash">$<?= number_format($p['cash'] ?? 0, 2) ?></div>
-                </div>
-                <div class="portfolio-section">
-                    <table class="portfolio-table">
-                        <tbody>
-                        <?php
-                        $totalShrs = 0;
-                        $totalVal = 0;
-                        ?>
-                        <?php foreach (($p['portfolio'] ?? []) as $stk => $shrs): ?>
-                            <?php
-                            $totalShrs += $shrs;
-                            $totalVal += $shrs * ($gameState['stocks'][$stk] ?? 1.0);
-
-                            ?>
-                            <tr>
-                                <td class="stock-name"><?= htmlspecialchars($stk) ?></td>
-                                <td class="stock-qty"><?= number_format($shrs) ?> <small>SHRS</small></td>
-                                <td class="stock-val">$<?= number_format($shrs * ($gameState['stocks'][$stk] ?? 1.0), 2) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <tr class="portfolio-totals">
-                            <td class="stock-name"><strong>Totals</strong></td>
-                            <td class="stock-qty"><?= number_format($totalShrs) ?><small> SHRS</small></td>
-                            <td class="stock-val">$<?= number_format($totalVal, 2) ?></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        <?php endforeach; ?>
+    <div class="players-container" id="playersContainer">
+        <!-- Will be populated by JavaScript -->
+        <div style="text-align: center; padding: 40px; color: #666;">
+            Loading players...
+        </div>
     </div>
 </div>
 
+<!-- History Bar -->
 <div class="history-bar" id="historyBar">
     <div class="history-header" onclick="toggleHistory()">
         <span class="history-title">📜 Game History</span>
         <span class="history-toggle" id="historyToggle">▼</span>
     </div>
     <div class="history-content" id="historyContent">
-        <div class="history-empty">No events yet...</div>
+        <div class="history-empty">Connecting...</div>
     </div>
 </div>
 
+<!-- Dice Overlay -->
 <div id="dice-overlay" class="dice-overlay" style="display: none;">
     <div class="dice-tray">
         <div class="die" id="die-stock">?</div>
@@ -294,23 +192,21 @@ $playersDoneTrading = $gameState['done_trading_count'] ?? 0;
     <div id="dice-text" class="dice-result-text">Rolling...</div>
 </div>
 
+<!-- Scripts -->
 <script>
+    // Pass PHP data to JavaScript
     window.gameId = <?= json_encode($gameId) ?>;
     window.currentPlayerId = <?= json_encode($currentPlayerId) ?>;
-    window.currentPlayerSlot = <?= (int)$currentPlayerSlot ?>;
     window.currentPlayerName = <?= json_encode($currentPlayerName) ?>;
-    window.isDicePhase = <?= $isDicePhase ? 'true' : 'false' ?>;
-    window.isYourTurn = <?= $isYourTurn ? 'true' : 'false' ?>;
-    window.timeRemaining = <?= $timeRemaining ?>;
-    window.currentTurn = <?= $currentTurn ?>;
-    window.currentPhase = <?= json_encode($currentPhase) ?>;
-    window.currentPlayerSlot = <?= $currentPlayerSlot ?>;
-    window.currentPlayerName = <?= json_encode($currentPlayerName) ?>;
-    window.initialDiceResults = <?= json_encode($gameState['dice_results'] ?? null) ?>;
-    window.playerNames = <?= json_encode(array_column($gameState['players'], 'name')) ?>;
-    window.currentPlayerCash = <?= $currentPlayerData['cash'] ?? 0 ?>;
-    window.currentPlayerShares = <?= json_encode($currentPlayerData['portfolio'] ?? []) ?>;
-    window.initialHistory = <?= json_encode($gameState['history'] ?? []) ?>;
+    window.SOCKETIO_SERVER = <?= json_encode($socketioServer) ?>;
+
+    // These will be set by Socket.IO
+    window.currentPlayerSlot = null;
+    window.isDicePhase = false;
+    window.isYourTurn = false;
+    window.currentPhase = null;
+    window.currentTurn = null;
+    window.timeRemaining = 0;
 </script>
 
 <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>

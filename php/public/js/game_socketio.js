@@ -139,9 +139,9 @@ class GameSocketClient {
 
         // Game started
         this.socket.on('game_started', (data) => {
-            console.log('🎮 Game started!');
-            // Reload page to show game UI
-            window.location.href = 'game.php';
+            if (!window.location.pathname.includes('game.php')) {
+                window.location.href = 'game.php';
+            }
         });
 
         // Game over

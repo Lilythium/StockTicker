@@ -25,12 +25,10 @@ $response = $client->getGameState($gameId);
 $gameState = $response['data'] ?? [];
 
 
-if (!isset($gameState['game_over']) || !$gameState['game_over']) {
-    if ($session->isInGame()) {
-        header("Location: game.php");
-        exit;
-    }
-    header("Location: index.php");
+if (empty($gameState['game_over'])) {
+    // If the server says the game is active, but we are on the Game Over page,
+    // we should go back to the game.
+    header("Location: game.php");
     exit;
 }
 
