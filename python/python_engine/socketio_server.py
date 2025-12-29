@@ -106,7 +106,7 @@ async def join_game(sid, data):
 
         # Track this connection
         sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
-        await sio.enter_room(sid, game_id)
+        sio.enter_room(sid, game_id)
 
         # Add or reconnect player
         result = game.add_player(player_id, player_name)
