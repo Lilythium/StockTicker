@@ -2,23 +2,23 @@ window.currentStockPrices = {};
 window.currentPlayerCash = 0;
 const AUDIO_PATHS = {
     shakes: [
-        '../../audio/dice_shakes/shuffle_open_1.mp3',
-        '../../audio/dice_shakes/shuffle_open_2.mp3',
-        '../../audio/dice_shakes/shuffle_open_3.mp3',
-        '../../audio/dice_shakes/shuffle_open_4.mp3'
+        './audio/dice_shakes/shuffle_open_1.mp3',
+        './audio/dice_shakes/shuffle_open_2.mp3',
+        './audio/dice_shakes/shuffle_open_3.mp3',
+        './audio/dice_shakes/shuffle_open_4.mp3'
     ],
     lands: [
-        '../../audio/dice_lands/d6_floor_1.mp3',
-        '../../audio/dice_lands/d6_floor_2.mp3',
-        '../../audio/dice_lands/d6_floor_3.mp3',
-        '../../audio/dice_lands/d6_floor_4.mp3'
+        './audio/dice_lands/d6_floor_1.mp3',
+        './audio/dice_lands/d6_floor_2.mp3',
+        './audio/dice_lands/d6_floor_3.mp3',
+        './audio/dice_lands/d6_floor_4.mp3'
     ],
     ui: {
-        click: '../../audio/button-click.ogg',
-        gameOver: '../../audio/game-complete.mp3',
-        phaseChange: '../../audio/game-phase-change.mp3',
-        gameStart: '../../audio/game-start.mp3',
-        yourTurn: '../../audio/your-turn.mp3'
+        click: './audio/button-click.ogg',
+        gameOver: './audio/game-complete.mp3',
+        phaseChange: './audio/game-phase-change.mp3',
+        gameStart: './audio/game-start.mp3',
+        yourTurn: './audio/your-turn.mp3'
     }
 };
 
