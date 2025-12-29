@@ -3,7 +3,7 @@
 use includes\SessionManager;
 
 require_once '../includes/SessionManager.php';
-require_once '../includes/env_loader.php';  // ← ADD THIS LINE
+require_once '../includes/env_loader.php';
 
 $session = SessionManager::getInstance();
 

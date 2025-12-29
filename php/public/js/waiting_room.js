@@ -12,7 +12,7 @@ let isRedirecting = false;
 /* ===== AUDIO HELPERS ===== */
 const AUDIO_PATHS = {
     ui: {
-        click: '/stock_ticker/audio/button-click.ogg'
+        click: '../../audio/button-click.ogg'
     }
 };
 

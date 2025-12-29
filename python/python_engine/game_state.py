@@ -14,40 +14,42 @@ class GameState:
             "Grain": 1.00
         }
 
-        # NET WORTH TRACKING (for game over graph)
-        self.networth_history = {}  # {player_slot: [(round, networth), ...]}
+        # NET WORTH TRACKING
+        self.networth_history = {}
 
         # PLAYERS
         self.players = {}
-        self.player_names = {}  # Active sessions: {player_id: {slot, name}}
-        self.player_id_slots = {}  # Persistent mapping: {player_id: slot} - tracks even when disconnected
-        self.player_left_flags = {}  # Track which players have left
+        self.player_names = {}
+        self.player_id_slots = {}
+        self.player_left_flags = {}
         self.first_player_id = None
         self.done_trading = set()
 
         self.player_count = player_count
         self.initialize_players(player_count)
 
-        # PHASE TRACKING
+        # PHASE TRACKING - SIMPLIFIED
         self.current_phase = "trading"
-        self.current_turn = 0  # Which player's turn (0-3)
+        self.current_turn = 0
         self.current_round = 1
         self.max_rounds = 15
-        self.phase_start_time = None
-        self.trading_duration = 120  # 2 minutes
-        self.dice_duration = 15  # 15 seconds per roll
+
+        # UNIFIED TIMER - ONE SOURCE OF TRUTH
+        self.phase_timer_start = None
+        self.phase_duration = 120  # Default trading duration
+        self.trading_duration = 120
+        self.dice_duration = 15
 
         # GAME STATE
         self.dice_results = None
-        self.roll_count = 0  # Counter to ensure each roll is unique
+        self.roll_count = 0
         self.game_status = "waiting"
-        self.last_roll_time = None
         self.game_over = False
         self.winner = None
 
-        # HISTORY TRACKING
+        # HISTORY
         self.history = []
-        self.max_history = 1000  # Keep last 1000 events
+        self.max_history = 1000
 
         # DICE CONSTANTS
         self.STOCK_DIE_MAPPING = {
@@ -64,11 +66,9 @@ class GameState:
         }
 
     def format_money(self, amount):
-        """Format money consistently with thousands separator"""
         return f"${amount:,.2f}"
 
     def add_history_entry(self, entry_type, message):
-        """Add an entry to the game history"""
         timestamp = time.time()
         entry = {
             'type': entry_type,
@@ -78,25 +78,19 @@ class GameState:
             'phase': self.current_phase
         }
         self.history.append(entry)
-
         if len(self.history) > self.max_history:
             self.history = self.history[-self.max_history:]
 
     def get_player_name(self, slot):
-        """Get player name by slot"""
         slot_str = str(slot)
         for info in self.player_names.values():
             if info["slot"] == slot_str:
                 return info["name"]
-
-        # Return cached name if player left
         if slot_str in self.players and "name" in self.players[slot_str]:
             return self.players[slot_str]["name"]
-
         return f"Player {int(slot) + 1}"
 
     def initialize_players(self, amount):
-        """Initialize the player slots"""
         self.players.clear()
         self.player_names.clear()
         self.player_id_slots.clear()
@@ -123,17 +117,12 @@ class GameState:
             self.networth_history[slot_str] = []
 
     def add_player(self, php_player_id, player_name, requested_slot=None):
-        """Assigns a PHP client to a slot - handles both new joins and rejoins"""
-
-        # Check if this player is already in the game (active session)
         if php_player_id in self.player_names:
             return {"success": True, "slot": self.player_names[php_player_id]["slot"], "rejoined": False}
 
-        # Check if this player was previously in the game (disconnected)
         if php_player_id in self.player_id_slots:
             return self.reconnect_player(php_player_id, player_name)
 
-        # New player joining
         existing_names = [info["name"] for info in self.player_names.values()]
         original_name = player_name
         counter = 2
@@ -156,10 +145,7 @@ class GameState:
             "slot": slot,
             "name": player_name
         }
-
-        # Track this player_id -> slot mapping persistently
         self.player_id_slots[php_player_id] = slot
-
         self.players[slot]["name"] = player_name
         self.player_left_flags[slot] = False
 
@@ -168,23 +154,17 @@ class GameState:
         return {"success": True, "slot": slot, "name": player_name, "player_name": player_name, "rejoined": False}
 
     def reconnect_player(self, php_player_id, player_name):
-        """Reconnect a previously disconnected player to their slot"""
         slot = self.player_id_slots[php_player_id]
         original_name = self.players[slot]["name"]
 
-        # Restore active session
         self.player_names[php_player_id] = {
             "slot": slot,
             "name": original_name
         }
 
-        # Clear disconnected flag
         self.player_left_flags[slot] = False
-
-        # Remove from done_trading if they were auto-marked
         self.done_trading.discard(slot)
 
-        # Reassign host if needed and game is waiting
         if self.first_player_id is None and self.game_status == "waiting":
             self.first_player_id = php_player_id
 
@@ -200,24 +180,17 @@ class GameState:
         }
 
     def reassign_host(self):
-        """Reassign host to the next available connected player"""
         if not self.player_names:
-            # No players left
             self.first_player_id = None
             return None
 
-        # Get list of connected player IDs sorted by join order
-        # The first one in player_names will be the new host
         new_host_id = next(iter(self.player_names))
         self.first_player_id = new_host_id
-
         new_host_name = self.player_names[new_host_id]["name"]
         self.add_history_entry('system', f"{new_host_name} is now the host")
-
         return new_host_id
 
     def remove_player(self, php_player_id):
-        """Remove a player's session but keep them in game as disconnected"""
         if php_player_id not in self.player_names:
             return {"success": False, "error": "Player not in game"}
 
@@ -226,30 +199,23 @@ class GameState:
         player_slot = player_info["slot"]
         was_host = (php_player_id == self.first_player_id)
 
-        # 1. Mark player as disconnected in the flags
         self.player_left_flags[player_slot] = True
 
-        # 2. CRITICAL FIX: Update the player object so the JS UI sees it!
         if player_slot in self.players:
             self.players[player_slot]["has_left"] = True
-            self.players[player_slot]["name"] = player_name  # Ensure name stays
+            self.players[player_slot]["name"] = player_name
 
-        # Remove from active sessions (this is what counts for "active_sessions" count)
         del self.player_names[php_player_id]
-
         self.add_history_entry('system', f"{player_name} disconnected")
 
-        # Reassign host if the host left
         if was_host:
             self.reassign_host()
 
-        # During trading phase, handle their vote
         if self.current_phase == "trading":
             self.done_trading.discard(player_slot)
 
         active_sessions = len(self.player_names)
 
-        # Only end game if ALL players disconnect
         if self.game_status == "active" and active_sessions == 0:
             self.add_history_entry('system', "All players disconnected. Game ending...")
             self.end_game()
@@ -266,20 +232,16 @@ class GameState:
         }
 
     def get_active_slots(self):
-        """Get list of player slots that are IN THE GAME (not empty)"""
         active = []
         for slot in self.players.keys():
-            # Slot is active if it was ever filled (has a real name)
             if self.players[slot]["name"] and not self.players[slot]["name"].startswith("Empty Slot"):
                 active.append(int(slot))
         return sorted(active)
 
     def get_connected_slots(self):
-        """Get list of player slots with active sessions"""
         return sorted([int(info["slot"]) for info in self.player_names.values()])
 
     def start_game(self, settings=None):
-        """Start the game - transition from waiting to active"""
         active = len([s for s in self.get_active_slots()])
         if active < 2:
             return {"success": False, "message": "Need at least 2 players"}
@@ -294,7 +256,10 @@ class GameState:
         self.current_phase = "trading"
         self.current_round = 1
         self.done_trading.clear()
-        self.phase_start_time = time.time()
+
+        # START UNIFIED TIMER
+        self.phase_timer_start = time.time()
+        self.phase_duration = self.trading_duration
 
         active_slots = self.get_active_slots()
         self.current_turn = active_slots[0]
@@ -309,159 +274,77 @@ class GameState:
             player_data['cash'] = starting_cash
 
     def record_networth_snapshot(self):
-        """Record current net worth for all active players"""
         for slot in self.get_active_slots():
             slot_str = str(slot)
             networth = self.get_networth(slot_str)
             self.networth_history[slot_str].append((self.current_round, networth))
 
     def mark_done_trading(self, player_slot):
-        """Mark player as done trading"""
         slot_str = str(player_slot)
 
-        # Ignore if player is disconnected
         if self.player_left_flags.get(slot_str, False):
             return {"success": False, "error": "Player is disconnected"}
 
         self.done_trading.add(slot_str)
-
         player_name = self.get_player_name(player_slot)
         self.add_history_entry('trade', f"{player_name} marked done trading")
 
         return {"success": True, "done_count": len(self.done_trading)}
 
-    def check_trading_phase_complete(self):
-        """Check if trading phase should end"""
-        active_slots = set(str(s) for s in self.get_active_slots())
+    def should_end_trading_phase(self):
+        """
+        SIMPLIFIED: Check if trading phase should end
+        Returns: (should_end, reason)
+        """
+        if self.current_phase != "trading":
+            return False, None
 
-        # Get connected slots (exclude disconnected players from vote count)
         connected_slots = set(str(s) for s in self.get_connected_slots())
 
-        # Condition 1: All CONNECTED players marked done (disconnected players don't vote)
-        if len(connected_slots) >= 1 and connected_slots.issubset(self.done_trading):
-            return True
+        # If no connected players, don't transition (game should end elsewhere)
+        if not connected_slots:
+            return False, None
 
-        # Condition 2: Timer expired
-        if self.phase_start_time:
-            elapsed = time.time() - self.phase_start_time
-            if elapsed >= self.trading_duration:
+        # Check if all connected players are done
+        if connected_slots.issubset(self.done_trading):
+            return True, "all_done"
+
+        # Check timer
+        if self.phase_timer_start:
+            elapsed = time.time() - self.phase_timer_start
+            if elapsed >= self.phase_duration:
                 # Auto-mark all connected players as done
                 for slot in connected_slots:
                     self.done_trading.add(slot)
-                return True
+                return True, "timer_expired"
 
-        return False
+        return False, None
 
-    def check_auto_roll_needed(self):
-        """Check if current player's turn has expired or they've disconnected"""
+    def should_auto_roll(self):
+        """
+        SIMPLIFIED: Check if current player should be auto-rolled
+        Returns: (should_roll, reason)
+        """
         if self.current_phase != "dice":
-            return False
+            return False, None
 
-        # Get current turn as string for dictionary lookup
         current_turn_str = str(self.current_turn)
 
-        # Debug info
-        print(f"DEBUG check_auto_roll_needed:")
-        print(f"  ↳ Current turn: {self.current_turn} ({current_turn_str})")
-        print(f"  ↳ Player left flags: {self.player_left_flags}")
-        print(f"  ↳ Current player in flags: {self.player_left_flags.get(current_turn_str, 'NOT FOUND')}")
-
-        # Auto-roll if current player disconnected
+        # Check if player is disconnected
         if self.player_left_flags.get(current_turn_str, False):
-            print(f"  ↳ Player is disconnected - auto-roll needed")
-            return True
+            return True, "disconnected"
 
-        # Auto-roll if dice timer is 0 (instant mode)
+        # Check if instant roll (0 duration)
         if self.dice_duration == 0:
-            print(f"  ↳ Dice duration is 0 - auto-roll needed")
-            return True
+            return True, "instant"
 
-        # Auto-roll if time expired
-        if self.last_roll_time:
-            elapsed = time.time() - self.last_roll_time
-            print(f"  ↳ Elapsed time: {elapsed}s, Duration: {self.dice_duration}s")
-            if elapsed >= self.dice_duration:
-                print(f"  ↳ Time expired - auto-roll needed")
-                return True
+        # Check timer
+        if self.phase_timer_start:
+            elapsed = time.time() - self.phase_timer_start
+            if elapsed >= self.phase_duration:
+                return True, "timer_expired"
 
-        print(f"  ↳ No auto-roll needed")
-        return False
-
-    def perform_auto_roll(self):
-        """Explicitly perform an auto-roll and return result"""
-        if self.current_phase != "dice":
-            print(f"DEBUG: Not in dice phase, cannot auto-roll")
-            return None
-
-        current_turn_str = str(self.current_turn)
-        player_name = self.get_player_name(self.current_turn)
-        is_disconnected = self.player_left_flags.get(current_turn_str, False)
-
-        print(f"DEBUG perform_auto_roll:")
-        print(f"  ↳ Player: {player_name} (slot {self.current_turn})")
-        print(f"  ↳ Disconnected: {is_disconnected}")
-
-        # Add context to history about why this is auto-rolling
-        if is_disconnected:
-            self.add_history_entry('system', f"{player_name} (disconnected) - auto-rolling...")
-        else:
-            self.add_history_entry('system', f"{player_name} - dice timer expired, auto-rolling...")
-
-        # Perform the roll - pass None to indicate system roll
-        try:
-            result = self.roll_dice(player_slot=None)  # System call
-
-            if result and result.get('success'):
-                print(f"  ↳ Auto-roll successful: {result.get('dice')}")
-                return result
-            else:
-                print(f"  ↳ Auto-roll failed: {result}")
-
-                # Fallback: Force a roll
-                print(f"  ↳ Using fallback roll")
-                return self._force_dice_roll()
-        except Exception as e:
-            print(f"  ↳ Exception in auto-roll: {e}")
-            import traceback
-            traceback.print_exc()
-            return self._force_dice_roll()
-
-    def _force_dice_roll(self):
-        """Force a dice roll as fallback"""
-        stock_die = random.randint(1, 6)
-        action_die = random.randint(1, 6)
-        amount_die = random.randint(1, 6)
-
-        stock = self.STOCK_DIE_MAPPING[stock_die]
-        action = self.ACTION_DIE_MAPPING[action_die]
-        amount = self.AMOUNT_DIE_MAPPING[amount_die]
-
-        self.roll_count += 1
-        self.dice_results = {
-            "stock": stock,
-            "action": action,
-            "amount": amount,
-            "roll_id": self.roll_count,
-            "timestamp": time.time()
-        }
-
-        # Apply the roll
-        result_message = self.handle_dice_roll(stock, action, amount)
-
-        # Advance turn
-        self.advance_dice_turn()
-
-        return {
-            "success": True,
-            "dice": {
-                "stock": stock,
-                "action": action,
-                "amount": amount,
-                "roll_id": self.roll_count
-            },
-            "result": result_message,
-            "auto": True
-        }
+        return False, None
 
     def change_game_phase(self):
         """Transition between trading and dice phases"""
@@ -469,10 +352,12 @@ class GameState:
             self.current_phase = "dice"
             active_slots = self.get_active_slots()
             self.current_turn = active_slots[0] if active_slots else 0
-            self.last_roll_time = time.time()
+
+            # RESET TIMER FOR DICE PHASE
+            self.phase_timer_start = time.time()
+            self.phase_duration = self.dice_duration
 
             self.add_history_entry('phase', f"▶ Phase changed to Dice Phase")
-
             player_name = self.get_player_name(self.current_turn)
             self.add_history_entry('roll', f"{player_name}'s turn to roll")
 
@@ -480,8 +365,11 @@ class GameState:
             self.record_networth_snapshot()
             self.current_phase = "trading"
             self.current_round += 1
-            self.done_trading.clear()  # CLEAR done_trading flags
-            self.phase_start_time = time.time()
+            self.done_trading.clear()
+
+            # RESET TIMER FOR TRADING PHASE
+            self.phase_timer_start = time.time()
+            self.phase_duration = self.trading_duration
 
             if self.current_round > self.max_rounds:
                 self.end_game()
@@ -491,7 +379,6 @@ class GameState:
         return {"success": True, "new_phase": self.current_phase}
 
     def end_game(self):
-        """End the game and determine winner"""
         self.current_phase = "game_over"
         self.game_over = True
         self.game_status = "finished"
@@ -502,7 +389,6 @@ class GameState:
             self.add_history_entry('phase', "Game Over! No players.")
             return
 
-        # Determine winner (highest net worth)
         winner_slot = max(active_slots, key=lambda s: self.get_networth(s))
         winner_name = self.get_player_name(winner_slot)
         winner_networth = self.get_networth(winner_slot)
@@ -523,11 +409,12 @@ class GameState:
             current_idx = active_slots.index(self.current_turn)
 
             if current_idx + 1 < len(active_slots):
-                # Clear dice results before switching to next player
                 self.dice_results = None
-
                 self.current_turn = active_slots[current_idx + 1]
-                self.last_roll_time = time.time()
+
+                # RESET TIMER FOR NEXT PLAYER
+                self.phase_timer_start = time.time()
+                self.phase_duration = self.dice_duration
 
                 player_name = self.get_player_name(self.current_turn)
                 self.add_history_entry('roll', f"{player_name}'s turn to roll")
@@ -540,24 +427,62 @@ class GameState:
             self.current_turn = active_slots[0] if active_slots else 0
             return {"reset_turn": True}
 
+    def perform_auto_roll(self):
+        """Perform automatic roll (for disconnected/timeout)"""
+        if self.current_phase != "dice":
+            return None
+
+        current_turn_str = str(self.current_turn)
+        player_name = self.get_player_name(self.current_turn)
+        is_disconnected = self.player_left_flags.get(current_turn_str, False)
+
+        if is_disconnected:
+            self.add_history_entry('system', f"{player_name} (disconnected) - auto-rolling...")
+        else:
+            self.add_history_entry('system', f"{player_name} - dice timer expired, auto-rolling...")
+
+        # Perform the roll
+        stock_die = random.randint(1, 6)
+        action_die = random.randint(1, 6)
+        amount_die = random.randint(1, 6)
+
+        stock = self.STOCK_DIE_MAPPING[stock_die]
+        action = self.ACTION_DIE_MAPPING[action_die]
+        amount = self.AMOUNT_DIE_MAPPING[amount_die]
+
+        self.roll_count += 1
+        self.dice_results = {
+            "stock": stock,
+            "action": action,
+            "amount": amount,
+            "roll_id": self.roll_count,
+            "timestamp": time.time()
+        }
+
+        result_message = self.handle_dice_roll(stock, action, amount)
+        self.advance_dice_turn()
+
+        return {
+            "success": True,
+            "dice": {
+                "stock": stock,
+                "action": action,
+                "amount": amount,
+                "roll_id": self.roll_count
+            },
+            "result": result_message,
+            "auto": True
+        }
+
     def roll_dice(self, player_slot=None):
-        """Roll dice and apply results"""
+        """Roll dice manually"""
         if self.current_phase != "dice":
             return {"success": False, "error": "Not dice phase"}
 
-        # Check if player is disconnected
         player_disconnected = self.player_left_flags.get(str(self.current_turn), False)
-
-        # Allow auto-rolls for disconnected players OR when called without player_slot (system roll)
-        # Also allow if dice duration is 0 (instant rolls)
         instant_roll = self.dice_duration == 0
-        is_system_call = (player_slot is None)  # Called by perform_auto_roll()
+        is_system_call = (player_slot is None)
 
-        # Allow the roll if:
-        # 1. Player is making their own roll (normal case)
-        # 2. Player is disconnected and system is rolling for them (auto-roll)
-        # 3. It's a system call (perform_auto_roll)
-        # 4. Instant roll mode is enabled
         if (player_slot is not None and
                 str(player_slot) != str(self.current_turn) and
                 not player_disconnected and
@@ -573,7 +498,6 @@ class GameState:
         action = self.ACTION_DIE_MAPPING[action_die]
         amount = self.AMOUNT_DIE_MAPPING[amount_die]
 
-        # Increment roll counter to make each roll unique
         self.roll_count += 1
         self.dice_results = {
             "stock": stock,
@@ -588,7 +512,6 @@ class GameState:
         player_name = self.get_player_name(self.current_turn)
         is_disconnected = self.player_left_flags.get(str(self.current_turn), False)
 
-        # Create history message
         if is_disconnected:
             history_msg = f"🤖 {player_name} (offline) rolled: "
         else:
@@ -627,13 +550,10 @@ class GameState:
         }
 
     def handle_dice_roll(self, stock, action, amount):
-        """Apply dice roll effects to game state"""
         if action == "div":
-            # Check if stock price is above $1.00 before paying dividends
             if self.stocks[stock] <= 1.00:
                 return f'{stock} dividend not payable (price at or below $1.00)'
 
-            # Pay dividends only if stock price > $1.00
             dividend_paid = False
             for slot in self.get_active_slots():
                 slot_str = str(slot)
@@ -655,7 +575,6 @@ class GameState:
         return f'{stock} moved {direction} {amount}¢ to ${self.stocks[stock]:.2f}'
 
     def move_stock(self, target, cents):
-        """Move stock price and handle splits/bankruptcies"""
         self.stocks[target] += cents / 100
 
         if self.stocks[target] >= 2.00:
@@ -673,7 +592,6 @@ class GameState:
             self.add_history_entry('system', f"💥 {target} went BANKRUPT! All shares lost, price reset to $1.00")
 
     def get_networth(self, slot):
-        """Calculate player's total net worth"""
         total = self.players[slot]["cash"]
         for s, qty in self.players[slot]["portfolio"].items():
             total += qty * self.stocks[s]
@@ -681,38 +599,25 @@ class GameState:
 
     def get_time_remaining(self):
         """Get time remaining in current phase"""
-        if not self.phase_start_time and not self.last_roll_time:
+        if not self.phase_timer_start:
             return 0
 
-        if self.current_phase == "trading":
-            if not self.phase_start_time:
-                return 0
-            elapsed = time.time() - self.phase_start_time
-            remaining = self.trading_duration - elapsed
-        else:
-            if self.last_roll_time:
-                elapsed = time.time() - self.last_roll_time
-                remaining = self.dice_duration - elapsed
-            else:
-                remaining = self.dice_duration
-
+        elapsed = time.time() - self.phase_timer_start
+        remaining = self.phase_duration - elapsed
         return max(0, remaining)
 
     def get_final_rankings(self):
-        """Get sorted list of players by net worth for game over screen"""
         rankings = []
         for slot in self.get_active_slots():
             slot_str = str(slot)
             data = self.players[slot_str]
 
-            # Try to find player_id
             pid = None
             for php_id, info in self.player_names.items():
                 if info["slot"] == slot_str:
                     pid = php_id
                     break
 
-            # If not in active sessions, check persistent mapping
             if pid is None:
                 for php_id, mapped_slot in self.player_id_slots.items():
                     if mapped_slot == slot_str:
@@ -733,7 +638,6 @@ class GameState:
         return rankings
 
     def get_game_state(self):
-        """Return complete game state"""
         players = {}
 
         for slot, data in self.players.items():
@@ -747,7 +651,6 @@ class GameState:
                     is_connected = True
                     break
 
-            # If not connected, try to find in persistent mapping
             if pid is None:
                 for php_id, mapped_slot in self.player_id_slots.items():
                     if mapped_slot == slot:
@@ -776,7 +679,6 @@ class GameState:
             "current_round": self.current_round,
             "max_rounds": self.max_rounds,
             "status": self.game_status,
-            "phase_start_time": self.phase_start_time,
             "time_remaining": self.get_time_remaining(),
             "trading_duration": self.trading_duration,
             "dice_duration": self.dice_duration,
@@ -784,8 +686,6 @@ class GameState:
             "active_player_count": len(self.get_active_slots()),
             "connected_player_count": len(self.get_connected_slots()),
             "dice_results": self.dice_results,
-            "trading_complete": self.check_trading_phase_complete(),
-            "auto_roll_needed": self.check_auto_roll_needed(),
             "history": self.history,
             "game_over": self.game_over,
             "winner": self.winner,
@@ -796,7 +696,6 @@ class GameState:
         }
 
     def buy_shares(self, player, stock, amount):
-        """Buy shares of a stock"""
         player = str(player)
         if player not in self.players:
             return {'success': False, 'error': 'Invalid player slot'}
@@ -818,7 +717,6 @@ class GameState:
         return {'success': True, 'data': f'Bought {amount} shares of {stock}'}
 
     def sell_shares(self, player, stock, amount):
-        """Sell shares of a stock"""
         player = str(player)
         if player not in self.players:
             return {'success': False, 'error': 'Invalid player slot'}
