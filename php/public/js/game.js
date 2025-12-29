@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    console.log('🎮 Initializing Game UI...');
+    console.log('🎮 Initializing Game UI (Server Timer Mode)...');
 
     window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER || 'http://127.0.0.1:9999');
 
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    console.log('✅ Game UI Initialized');
+    console.log('✅ Game UI Initialized (Server-Controlled Timer)');
 });
 
 /* ===== SOCKET HANDLERS ===== */
@@ -122,7 +122,6 @@ function setupSocketHandlers() {
         if (data.success && data.game_state) {
             const state = data.game_state;
 
-            // Identify player slot only if not already set
             if ((window.currentPlayerSlot === null || window.currentPlayerSlot === undefined) && state.players) {
                 for (const [slot, player] of Object.entries(state.players)) {
                     if (player.player_id === window.playerId) {
@@ -137,7 +136,6 @@ function setupSocketHandlers() {
             handleGameStateUpdate(state);
         } else if (!data.success) {
             console.error('Join failed:', data.error);
-            // If game not found or other critical error, go back to lobby
             if (data.error && (data.error.includes('not found') || data.error.includes('finished'))) {
                 alert('This game is no longer available.');
                 window.location.href = 'index.php';
@@ -156,10 +154,23 @@ function setupSocketHandlers() {
         queueDiceRoll(stock, action, amount);
     };
 
-    gameSocket.onPhaseChanged = (data) => {
+    // NEW: Listen for server-controlled phase transitions
+    gameSocket.socket.on('phase_transition', (data) => {
+        console.log('🔄 SERVER PHASE TRANSITION:', data);
         playSound('ui/phaseChange');
-        console.log('🔄 Phase changed:', data);
-    };
+        
+        const oldPhase = data.old_phase;
+        const newPhase = data.new_phase;
+        
+        // Update local state
+        window.currentPhase = newPhase;
+        
+        // Handle transition
+        handlePhaseChange(oldPhase, newPhase);
+        
+        // Show notification
+        showPhaseNotification(data.message || `Phase changed to ${newPhase}`);
+    });
 
     gameSocket.onGameOver = (data) => {
         playSound('ui/gameOver');
@@ -171,7 +182,6 @@ function setupSocketHandlers() {
 
 /* ===== MAIN STATE HANDLER ===== */
 async function handleGameStateUpdate(state) {
-    // Queue state updates if one is in progress
     if (isProcessingState) {
         pendingStateUpdate = state;
         return;
@@ -186,7 +196,6 @@ async function handleGameStateUpdate(state) {
     } finally {
         isProcessingState = false;
 
-        // Process pending update if exists
         if (pendingStateUpdate) {
             const pending = pendingStateUpdate;
             pendingStateUpdate = null;
@@ -209,7 +218,7 @@ async function processGameState(state) {
         time: state.time_remaining
     });
 
-    // CRITICAL: Handle game over
+    // Handle game over
     if (state.game_over) {
         if (!isRedirecting) {
             isRedirecting = true;
@@ -221,7 +230,7 @@ async function processGameState(state) {
         return;
     }
 
-    // CRITICAL: Handle page redirects
+    // Handle page redirects
     if (isWaitingRoom && state.status === 'active' && state.current_round >= 1) {
         if (!isRedirecting) {
             isRedirecting = true;
@@ -259,20 +268,20 @@ async function processGameState(state) {
         }
     }
 
-    // Detect phase/turn changes
+    // Track phase/turn for local UI updates (not for transitions)
     const previousPhase = window.currentPhase;
     const previousTurn = window.currentTurn;
 
     window.currentPhase = state.current_phase;
     window.currentTurn = state.current_turn;
 
+    // Only log phase changes (server will handle actual transitions)
     if (previousPhase && previousPhase !== window.currentPhase) {
-        console.log(`🔄 Phase: ${previousPhase} → ${window.currentPhase}`);
-        handlePhaseChange(previousPhase, window.currentPhase);
+        console.log(`🔄 Phase updated: ${previousPhase} → ${window.currentPhase}`);
     }
 
     if (previousTurn !== undefined && previousTurn !== window.currentTurn) {
-        console.log(`👉 Turn: ${previousTurn} → ${window.currentTurn}`);
+        console.log(`👉 Turn updated: ${previousTurn} → ${window.currentTurn}`);
     }
 
     // Update UI
@@ -474,67 +483,54 @@ function updateTurnStatus(state) {
         turnStatus.style.display = 'none';
     }
 }
-let isRequestingState = false;
 
 function updateTimerDisplay(state) {
     const timerDisplay = document.getElementById('timer');
     if (!timerDisplay || state.time_remaining === undefined) return;
 
-    // 2. Sync our local "Master" time with the Server's authoritative time
-    window.timeRemaining = Math.floor(state.time_remaining);
-
-    // 3. Clear any existing interval so we don't have multiples running
-    if (window.gameTimerInterval) {
-        clearInterval(window.gameTimerInterval);
-    }
-
-    // 4. Update the text immediately
-    updateTimerText(window.timeRemaining);
-
-    // 5. Start a fresh countdown
-    window.gameTimerInterval = setInterval(() => {
-        if (window.timeRemaining > 0) {
-            window.timeRemaining--;
-            updateTimerText(window.timeRemaining);
-        } else {
-            // Timer hit zero!
-            clearInterval(window.gameTimerInterval);
-            handleTimerExpired();
-        }
-    }, 1000);
-
-    function updateTimerText(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        timerDisplay.style.color = (seconds <= 10 && seconds > 0) ? '#ef4444' : '';
-    }
+    // Display server time (for visualization only)
+    const serverTime = Math.floor(state.time_remaining);
+    
+    const mins = Math.floor(serverTime / 60);
+    const secs = serverTime % 60;
+    timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    
+    // Visual warning when low
+    timerDisplay.style.color = (serverTime <= 10 && serverTime > 0) ? '#ef4444' : '';
+    
+    // Note: We NO LONGER create a local countdown
+    // The server will send phase_transition events when time expires
 }
 
-function handleTimerExpired() {
-    // Only request if we aren't already waiting for a response
-    if (!isRequestingState && gameSocket && gameSocket.isConnected()) {
-        console.log('⏰ Timer expired, requesting state...');
-        isRequestingState = true;
-
-        gameSocket.requestState();
-
-        // Prevent spamming the request if the server is slow to advance the phase
-        setTimeout(() => {
-            isRequestingState = false;
-        }, 3000);
-    }
+function showPhaseNotification(message) {
+    // Create a temporary notification overlay
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 30px 50px;
+        border-radius: 10px;
+        font-size: 24px;
+        font-weight: bold;
+        z-index: 10000;
+        text-align: center;
+        animation: fadeInOut 2s;
+        pointer-events: none;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 2000);
 }
 
 function handlePhaseChange(oldPhase, newPhase) {
     console.log(`🎯 Phase change: ${oldPhase} → ${newPhase}`);
-
-    try {
-        const audio = new Audio('/stock_ticker/audio/game-phase-change.mp3');
-        audio.play().catch(e => console.log('Audio blocked'));
-    } catch (e) {
-        console.log('Could not play sound');
-    }
 
     if (newPhase === 'trading') {
         resetDoneTradingCheckbox();
@@ -812,7 +808,6 @@ function updateCostDisplay() {
 
     if (!stockSelect || !amountInput || !costDisplay) return;
 
-    // If prices haven't loaded yet, show $0.00 and exit
     if (!window.currentStockPrices) {
         costDisplay.value = "COST: $0.00";
         return;
@@ -821,7 +816,6 @@ function updateCostDisplay() {
     const selectedStock = stockSelect.value;
     const amount = parseInt(amountInput.value) || 0;
 
-    // Now it is safe to check for the specific stock price
     const stockPrice = window.currentStockPrices[selectedStock] || 0.00;
     const totalCost = amount * stockPrice;
 
@@ -830,7 +824,6 @@ function updateCostDisplay() {
         maximumFractionDigits: 2
     })}`;
 
-    // Ensure currentPlayerCash is also checked
     const playerCash = window.currentPlayerCash || 0;
     if (totalCost > playerCash && amount > 0) {
         costDisplay.style.color = '#ef4444';

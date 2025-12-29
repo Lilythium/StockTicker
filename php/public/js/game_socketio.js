@@ -10,8 +10,8 @@ class GameSocketClient {
         this.connected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
-        this.isJoining = false; // Prevent duplicate joins
-        this.hasJoined = false; // Track if we've successfully joined
+        this.isJoining = false;
+        this.hasJoined = false;
 
         this.socket.onAny((eventName, ...args) => {
             console.log(`🔍 Raw Socket Event: ${eventName}`, args);
@@ -42,12 +42,9 @@ class GameSocketClient {
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             reconnectionAttempts: this.maxReconnectAttempts,
-            // IMPORTANT: Prevent multiple connections
             forceNew: false,
             multiplex: true,
-            // Timeout settings
             timeout: 20000,
-            // Keep connection alive
             pingInterval: 25000,
             pingTimeout: 60000
         });
@@ -69,8 +66,6 @@ class GameSocketClient {
                 this.onConnectionChange(true);
             }
 
-            // IMPORTANT: Only auto-rejoin if we had previously joined successfully
-            // AND we're not currently in the middle of joining
             if (this.gameId && this.playerId && this.hasJoined && !this.isJoining) {
                 console.log('🔄 Reconnected - rejoining game...');
                 this.joinGame(this.gameId, this.playerId, window.playerName || 'Player');
@@ -85,7 +80,6 @@ class GameSocketClient {
                 this.onConnectionChange(false);
             }
 
-            // Don't try to reconnect if it was intentional
             if (reason === 'io client disconnect') {
                 console.log('🛑 Intentional disconnect - not reconnecting');
                 this.hasJoined = false;
@@ -108,7 +102,6 @@ class GameSocketClient {
         this.socket.on('game_state_update', (state) => {
             console.log('📊 Game state update received');
 
-            // Auto-detect player slot if not set
             if (this.playerSlot === null && this.playerId && state.players) {
                 for (const [slot, player] of Object.entries(state.players)) {
                     if (player.player_id === this.playerId) {
@@ -127,12 +120,11 @@ class GameSocketClient {
         // Join result
         this.socket.on('join_result', (data) => {
             console.log('Join result:', data);
-            this.isJoining = false; // Release the join lock
+            this.isJoining = false;
 
             if (data.success) {
-                this.hasJoined = true; // Mark that we've successfully joined
+                this.hasJoined = true;
 
-                // Extract player slot from game state
                 const gameState = data.game_state;
                 if (gameState && gameState.players) {
                     for (const [slot, player] of Object.entries(gameState.players)) {
@@ -157,7 +149,15 @@ class GameSocketClient {
             }
         });
 
-        // Phase changed
+        // Phase transition (SERVER CONTROLLED)
+        this.socket.on('phase_transition', (data) => {
+            console.log('🔄 SERVER PHASE TRANSITION:', data);
+            if (this.onPhaseChanged) {
+                this.onPhaseChanged(data);
+            }
+        });
+
+        // Legacy phase changed event (keep for compatibility)
         this.socket.on('phase_changed', (data) => {
             console.log('🔄 Phase changed:', data.new_phase);
             if (this.onPhaseChanged) {
@@ -179,7 +179,6 @@ class GameSocketClient {
             if (this.onGameOver) {
                 this.onGameOver(data);
             }
-            // Redirect to game over page
             setTimeout(() => {
                 window.location.href = `game_over.php?game_id=${this.gameId}`;
             }, 2000);
@@ -210,13 +209,11 @@ class GameSocketClient {
      * Join a game
      */
     joinGame(gameId, playerId, playerName, playerCount = 4) {
-        // Prevent duplicate joins
         if (this.isJoining) {
             console.log('⏳ Join already in progress, skipping...');
             return;
         }
 
-        // Don't rejoin if we're already in this game
         if (this.hasJoined && this.gameId === gameId && this.playerId === playerId) {
             console.log('✓ Already joined this game, skipping...');
             return;
@@ -235,7 +232,6 @@ class GameSocketClient {
             player_count: playerCount
         });
 
-        // Set a timeout to release the join lock if we don't get a response
         setTimeout(() => {
             if (this.isJoining) {
                 console.warn('⚠️ Join timeout - releasing lock');
@@ -384,15 +380,18 @@ class GameSocketClient {
     }
 
     /**
-     * Request current game state (fallback)
+     * Request current game state (fallback/manual refresh)
      */
     requestState() {
         if (!this.gameId) return;
 
+        console.log('Requesting game state...');
+        
         this.socket.emit('get_state', {
             game_id: this.gameId
         });
     }
+
     /**
      * Check if connected
      */
