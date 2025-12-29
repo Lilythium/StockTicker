@@ -1,3 +1,5 @@
+window.currentStockPrices = {};
+window.currentPlayerCash = 0;
 const AUDIO_PATHS = {
     shakes: [
         '../../audio/dice_shakes/shuffle_open_1.mp3',
@@ -22,8 +24,8 @@ const AUDIO_PATHS = {
 
 /* ===== STATE MANAGEMENT ===== */
 let isRedirecting = false;
-let lastPhase = null;
-let lastTurn = null;
+let hasInitialized = false;
+let isConnecting = false;
 let isShaking = false;
 let animationInProgress = false;
 
@@ -47,18 +49,52 @@ function playSound(pathOrCategory) {
 
 /* ===== INITIALIZATION ===== */
 document.addEventListener('DOMContentLoaded', () => {
+    if (hasInitialized) {
+        console.warn('⚠️ Already initialized, skipping...');
+        return;
+    }
+
     console.log('🎮 Initializing Game UI...');
+
+    window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER || 'http://127.0.0.1:9999');
+
+    window.gameSocket.onConnectionChange = (connected) => {
+        if (connected) {
+            console.log("🔗 Connection established. Requesting to join room...");
+            if (window.gameId && window.playerId) {
+                window.gameSocket.joinGame(
+                    window.gameId,
+                    window.playerId,
+                    window.playerName || 'Player'
+                );
+            } else {
+                console.error("❌ Cannot join: gameId or playerId is missing.");
+            }
+        }
+    };
 
     if (!window.gameSocket) {
         window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER);
+        console.log('✅ Socket client created');
+    } else {
+        console.log('✓ Using existing socket client');
     }
 
-    console.log('Connecting to Socket.IO server...');
-    gameSocket.connect();
     setupSocketHandlers();
     setupTradeEventListeners();
     initCostDisplayListeners();
     initializeHistoryScroll();
+
+    if (!gameSocket.isConnected()) {
+        console.log('Connecting to Socket.IO server...');
+        isConnecting = true;
+        gameSocket.connect();
+    } else {
+        console.log('✓ Already connected');
+        if (window.gameId && window.playerId) {
+            gameSocket.joinGame(window.gameId, window.playerId, window.playerName);
+        }
+    }
 
     console.log('✅ Game UI Initialized');
 });
@@ -72,19 +108,24 @@ function setupSocketHandlers() {
     }
 
     gameSocket.socket.on('connect', () => {
-        console.log('✅ Socket.IO connected! Joining game...');
-        gameSocket.joinGame(window.gameId, window.currentPlayerId, window.currentPlayerName);
+        console.log('✅ Socket.IO connected!');
+        isConnecting = false;
+        if (window.gameId && window.playerId && window.playerName) {
+            console.log('Joining game...');
+            gameSocket.joinGame(window.gameId, window.playerId, window.playerName);
+        }
     });
 
     gameSocket.socket.on('join_result', (data) => {
         console.log('📥 Join result:', data);
+
         if (data.success && data.game_state) {
             const state = data.game_state;
 
-            // Identify player slot
-            if (state.players) {
+            // Identify player slot only if not already set
+            if ((window.currentPlayerSlot === null || window.currentPlayerSlot === undefined) && state.players) {
                 for (const [slot, player] of Object.entries(state.players)) {
-                    if (player.player_id === window.currentPlayerId) {
+                    if (player.player_id === window.playerId) {
                         window.currentPlayerSlot = parseInt(slot);
                         gameSocket.playerSlot = parseInt(slot);
                         console.log(`✅ Player slot: ${window.currentPlayerSlot}`);
@@ -94,6 +135,13 @@ function setupSocketHandlers() {
             }
 
             handleGameStateUpdate(state);
+        } else if (!data.success) {
+            console.error('Join failed:', data.error);
+            // If game not found or other critical error, go back to lobby
+            if (data.error && (data.error.includes('not found') || data.error.includes('finished'))) {
+                alert('This game is no longer available.');
+                window.location.href = 'index.php';
+            }
         }
     });
 
@@ -202,7 +250,7 @@ async function processGameState(state) {
     // Identify player slot if not set
     if ((window.currentPlayerSlot === null || window.currentPlayerSlot === undefined) && state.players) {
         for (const [slot, player] of Object.entries(state.players)) {
-            if (player.player_id === window.currentPlayerId) {
+            if (player.player_id === window.playerId) {
                 window.currentPlayerSlot = parseInt(slot);
                 gameSocket.playerSlot = parseInt(slot);
                 console.log(`✅ Player slot identified: ${window.currentPlayerSlot}`);
@@ -293,7 +341,7 @@ function updatePlayerCardsUI(players, stocks) {
         const p = players[slot];
         if (!p.player_id) return;
 
-        const isMe = (p.player_id === window.currentPlayerId);
+        const isMe = (p.player_id === window.playerId);
         const isOff = p.has_left || false;
         const isDone = p.done_trading || false;
 
@@ -426,32 +474,32 @@ function updateTurnStatus(state) {
         turnStatus.style.display = 'none';
     }
 }
+let isRequestingState = false;
 
 function updateTimerDisplay(state) {
     const timerDisplay = document.getElementById('timer');
     if (!timerDisplay || state.time_remaining === undefined) return;
 
-    const totalSeconds = Math.floor(state.time_remaining);
+    // 2. Sync our local "Master" time with the Server's authoritative time
+    window.timeRemaining = Math.floor(state.time_remaining);
 
+    // 3. Clear any existing interval so we don't have multiples running
     if (window.gameTimerInterval) {
         clearInterval(window.gameTimerInterval);
     }
 
-    updateTimerText(totalSeconds);
+    // 4. Update the text immediately
+    updateTimerText(window.timeRemaining);
 
-    let localSeconds = totalSeconds;
+    // 5. Start a fresh countdown
     window.gameTimerInterval = setInterval(() => {
-        if (localSeconds > 0) {
-            localSeconds--;
-            updateTimerText(localSeconds);
+        if (window.timeRemaining > 0) {
+            window.timeRemaining--;
+            updateTimerText(window.timeRemaining);
         } else {
+            // Timer hit zero!
             clearInterval(window.gameTimerInterval);
-
-            // Request state update when timer expires
-            console.log('⏰ Timer expired, requesting state...');
-            if (gameSocket && gameSocket.isConnected()) {
-                gameSocket.requestState();
-            }
+            handleTimerExpired();
         }
     }, 1000);
 
@@ -459,14 +507,22 @@ function updateTimerDisplay(state) {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        timerDisplay.style.color = (seconds <= 10 && seconds > 0) ? '#ef4444' : '';
+    }
+}
 
-        if (seconds <= 10 && seconds > 0) {
-            timerDisplay.style.color = '#ef4444';
-            timerDisplay.style.fontWeight = 'bold';
-        } else {
-            timerDisplay.style.color = '';
-            timerDisplay.style.fontWeight = '';
-        }
+function handleTimerExpired() {
+    // Only request if we aren't already waiting for a response
+    if (!isRequestingState && gameSocket && gameSocket.isConnected()) {
+        console.log('⏰ Timer expired, requesting state...');
+        isRequestingState = true;
+
+        gameSocket.requestState();
+
+        // Prevent spamming the request if the server is slow to advance the phase
+        setTimeout(() => {
+            isRequestingState = false;
+        }, 3000);
     }
 }
 
@@ -756,9 +812,17 @@ function updateCostDisplay() {
 
     if (!stockSelect || !amountInput || !costDisplay) return;
 
+    // If prices haven't loaded yet, show $0.00 and exit
+    if (!window.currentStockPrices) {
+        costDisplay.value = "COST: $0.00";
+        return;
+    }
+
     const selectedStock = stockSelect.value;
     const amount = parseInt(amountInput.value) || 0;
-    const stockPrice = window.currentStockPrices[selectedStock] || 1.00;
+
+    // Now it is safe to check for the specific stock price
+    const stockPrice = window.currentStockPrices[selectedStock] || 0.00;
     const totalCost = amount * stockPrice;
 
     costDisplay.value = `COST: $${totalCost.toLocaleString(undefined, {
@@ -766,7 +830,9 @@ function updateCostDisplay() {
         maximumFractionDigits: 2
     })}`;
 
-    if (window.currentPlayerCash !== undefined && totalCost > window.currentPlayerCash && amount > 0) {
+    // Ensure currentPlayerCash is also checked
+    const playerCash = window.currentPlayerCash || 0;
+    if (totalCost > playerCash && amount > 0) {
         costDisplay.style.color = '#ef4444';
         costDisplay.style.fontWeight = 'bold';
     } else {
@@ -788,7 +854,7 @@ function initCostDisplayListeners() {
         amountInput.addEventListener('change', () => updateCostDisplay());
     }
 
-    setTimeout(() => updateCostDisplay(), 100);
+    setTimeout(() => updateCostDisplay(), 200);
 }
 
 /* ===== DICE ANIMATION ===== */
@@ -1032,6 +1098,14 @@ window.showError = showError;
 
 window.addEventListener('beforeunload', () => {
     if (gameSocket) {
-        gameSocket.disconnect();
+        hasInitialized = false;
+    }
+});
+
+// Prevent navigation during critical operations
+window.addEventListener('beforeunload', (e) => {
+    if (animationInProgress || isProcessingState) {
+        e.preventDefault();
+        return '';
     }
 });

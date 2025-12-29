@@ -7,6 +7,9 @@ let lastPlayerCount = 0;
 let currentGameState = null;
 let isHost = false;
 let isJoining = false;
+let hasJoined = false;
+let joinAttempts = 0;
+const MAX_JOIN_ATTEMPTS = 3;
 let isRedirecting = false;
 
 /* ===== AUDIO HELPERS ===== */
@@ -39,16 +42,12 @@ document.addEventListener('DOMContentLoaded', function() {
         window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER || 'http://127.0.0.1:9999');
     }
 
-    // Connect to server
-    gameSocket.connect();
-
-    // Set up event handlers
-    setupSocketHandlers();
-
-    // Join the game via Socket.IO
-    setTimeout(() => {
-        joinGameViaSocket();
-    }, 500);
+    if (window.gameSocket && window.gameSocket.socket) {
+        setupSocketHandlers();
+        gameSocket.connect();
+    } else {
+        console.error("❌ Socket initialization failed. Check GameSocketClient class.");
+    }
 
     // Load saved settings
     loadSavedSettings();
@@ -91,28 +90,44 @@ function setupSocketHandlers() {
     gameSocket.onConnectionChange = (connected) => {
         console.log(connected ? '✅ Connected to server' : '❌ Disconnected from server');
 
-        if (connected && window.gameId && window.playerId) {
-            // Rejoin if we reconnect, but only if we aren't already joining
-            if (!isJoining) {
-                console.log('🔄 Re-establishing session...');
-                joinGameViaSocket();
-            }
+        if (connected && !hasJoined && !isJoining) {
+            // Only try to join if we haven't joined yet
+            console.log('🔌 Connected - attempting to join...');
+            // Wait a bit to ensure socket is fully ready
+            setTimeout(() => {
+                if (!hasJoined && !isJoining) {
+                    joinGameViaSocket();
+                }
+            }, 500);
         }
     };
 
     // Handle join result
     gameSocket.socket.on('join_result', (data) => {
-        console.log('Join result:', data);
-        isJoining = false; // Release the guard
+        console.log('📥 Join result:', data);
+        isJoining = false; // Release the lock
 
         if (data.success) {
+            hasJoined = true; // Mark as successfully joined
+            joinAttempts = 0; // Reset attempts counter
+
             const state = data.game_state;
             handleGameStateUpdate(state);
         } else {
             console.error('Failed to join game:', data.error);
-            // Only redirect to index if it's a critical error (like game doesn't exist)
-            if (data.error && data.error.includes("not found")) {
+            hasJoined = false;
+
+            // If it's a critical error, redirect
+            if (data.error && (data.error.includes("not found") || data.error.includes("full"))) {
+                alert('Unable to join game: ' + data.error);
                 window.location.href = 'index.php';
+            } else {
+                // Otherwise, retry after a delay
+                setTimeout(() => {
+                    if (!hasJoined && joinAttempts < MAX_JOIN_ATTEMPTS) {
+                        joinGameViaSocket();
+                    }
+                }, 2000);
             }
         }
     });
@@ -139,13 +154,33 @@ function setupSocketHandlers() {
     // Handle errors
     gameSocket.onError = (message) => {
         console.error('Socket error:', message);
-        // Alerting here can sometimes cause loops if it triggers on every retry
-        // Consider a UI toast instead of a blocking alert
+        // Don't show alert on every error to avoid alert spam
+        if (message.includes('Failed to connect')) {
+            console.error('Connection failed - will retry automatically');
+        }
     };
 }
 
+
 function joinGameViaSocket() {
-    if (isJoining || isRedirecting) return;
+    // Guard against multiple simultaneous join attempts
+    if (isJoining) {
+        console.log('⏳ Join already in progress, skipping...');
+        return;
+    }
+
+    // Don't rejoin if we've already successfully joined
+    if (hasJoined) {
+        console.log('✓ Already joined, skipping...');
+        return;
+    }
+
+    // Limit join attempts
+    if (joinAttempts >= MAX_JOIN_ATTEMPTS) {
+        console.error('❌ Max join attempts reached');
+        alert('Failed to join game after multiple attempts. Please refresh the page.');
+        return;
+    }
 
     if (!window.gameId || !window.playerId || !window.playerName) {
         console.error('Missing game credentials');
@@ -153,8 +188,9 @@ function joinGameViaSocket() {
     }
 
     isJoining = true;
+    joinAttempts++;
 
-    console.log('Joining game via Socket.IO:', {
+    console.log(`Joining game via Socket.IO (attempt ${joinAttempts}):`, {
         gameId: window.gameId,
         playerId: window.playerId,
         playerName: window.playerName
@@ -166,6 +202,21 @@ function joinGameViaSocket() {
         window.playerName,
         window.maxPlayers || 4
     );
+
+    // Set a timeout to release the join lock if we don't get a response
+    setTimeout(() => {
+        if (isJoining && !hasJoined) {
+            console.warn('⚠️ Join timeout - will retry');
+            isJoining = false;
+
+            // Retry after a delay if we haven't succeeded
+            setTimeout(() => {
+                if (!hasJoined && joinAttempts < MAX_JOIN_ATTEMPTS) {
+                    joinGameViaSocket();
+                }
+            }, 2000);
+        }
+    }, 5000);
 }
 
 function handleGameStateUpdate(state) {
@@ -536,3 +587,12 @@ window.startGame = startGame;
 window.copyGameLink = copyGameLink;
 window.resetSettings = resetSettings;
 window.updateSetting = updateSetting;
+
+// Make sure to reset join state when leaving
+window.addEventListener('beforeunload', () => {
+    hasJoined = false;
+    isJoining = false;
+    if (window.gameSocket && typeof window.gameSocket.disconnect === 'function') {
+        window.gameSocket.disconnect();
+    }
+});

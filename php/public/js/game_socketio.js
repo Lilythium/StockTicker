@@ -3,13 +3,19 @@
 class GameSocketClient {
     constructor(serverUrl = 'http://127.0.0.1:9999') {
         this.serverUrl = serverUrl;
-        this.socket = null;
+        this.socket = io(serverUrl, { autoConnect: false });
         this.gameId = null;
         this.playerId = null;
         this.playerSlot = null;
         this.connected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
+        this.isJoining = false; // Prevent duplicate joins
+        this.hasJoined = false; // Track if we've successfully joined
+
+        this.socket.onAny((eventName, ...args) => {
+            console.log(`🔍 Raw Socket Event: ${eventName}`, args);
+        });
 
         // Event handlers
         this.onStateUpdate = null;
@@ -35,7 +41,15 @@ class GameSocketClient {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: this.maxReconnectAttempts
+            reconnectionAttempts: this.maxReconnectAttempts,
+            // IMPORTANT: Prevent multiple connections
+            forceNew: false,
+            multiplex: true,
+            // Timeout settings
+            timeout: 20000,
+            // Keep connection alive
+            pingInterval: 25000,
+            pingTimeout: 60000
         });
 
         this.setupEventHandlers();
@@ -55,19 +69,26 @@ class GameSocketClient {
                 this.onConnectionChange(true);
             }
 
-            // Auto-rejoin if we have a gameId
-            if (this.gameId && this.playerId) {
-                console.log('Auto-rejoining game after reconnection...');
-                this.joinGame(this.gameId, this.playerId, window.currentPlayerName || 'Player');
+            // IMPORTANT: Only auto-rejoin if we had previously joined successfully
+            // AND we're not currently in the middle of joining
+            if (this.gameId && this.playerId && this.hasJoined && !this.isJoining) {
+                console.log('🔄 Reconnected - rejoining game...');
+                this.joinGame(this.gameId, this.playerId, window.playerName || 'Player');
             }
         });
 
-        this.socket.on('disconnect', () => {
-            console.log('❌ Disconnected from game server');
+        this.socket.on('disconnect', (reason) => {
+            console.log(`❌ Disconnected: ${reason}`);
             this.connected = false;
 
             if (this.onConnectionChange) {
                 this.onConnectionChange(false);
+            }
+
+            // Don't try to reconnect if it was intentional
+            if (reason === 'io client disconnect') {
+                console.log('🛑 Intentional disconnect - not reconnecting');
+                this.hasJoined = false;
             }
         });
 
@@ -106,7 +127,11 @@ class GameSocketClient {
         // Join result
         this.socket.on('join_result', (data) => {
             console.log('Join result:', data);
+            this.isJoining = false; // Release the join lock
+
             if (data.success) {
+                this.hasJoined = true; // Mark that we've successfully joined
+
                 // Extract player slot from game state
                 const gameState = data.game_state;
                 if (gameState && gameState.players) {
@@ -118,6 +143,9 @@ class GameSocketClient {
                         }
                     }
                 }
+            } else {
+                console.error('Join failed:', data.error);
+                this.hasJoined = false;
             }
         });
 
@@ -139,6 +167,7 @@ class GameSocketClient {
 
         // Game started
         this.socket.on('game_started', (data) => {
+            console.log('🎮 Game started!');
             if (!window.location.pathname.includes('game.php')) {
                 window.location.href = 'game.php';
             }
@@ -181,6 +210,19 @@ class GameSocketClient {
      * Join a game
      */
     joinGame(gameId, playerId, playerName, playerCount = 4) {
+        // Prevent duplicate joins
+        if (this.isJoining) {
+            console.log('⏳ Join already in progress, skipping...');
+            return;
+        }
+
+        // Don't rejoin if we're already in this game
+        if (this.hasJoined && this.gameId === gameId && this.playerId === playerId) {
+            console.log('✓ Already joined this game, skipping...');
+            return;
+        }
+
+        this.isJoining = true;
         this.gameId = gameId;
         this.playerId = playerId;
 
@@ -192,6 +234,14 @@ class GameSocketClient {
             player_name: playerName,
             player_count: playerCount
         });
+
+        // Set a timeout to release the join lock if we don't get a response
+        setTimeout(() => {
+            if (this.isJoining) {
+                console.warn('⚠️ Join timeout - releasing lock');
+                this.isJoining = false;
+            }
+        }, 5000);
     }
 
     /**
@@ -207,8 +257,20 @@ class GameSocketClient {
             player_id: this.playerId
         });
 
+        this.hasJoined = false;
         this.gameId = null;
         this.playerSlot = null;
+    }
+
+    /**
+     * Disconnect from server (intentional)
+     */
+    disconnect() {
+        if (this.socket) {
+            this.hasJoined = false;
+            this.socket.disconnect();
+            this.connected = false;
+        }
     }
 
     /**
@@ -331,17 +393,6 @@ class GameSocketClient {
             game_id: this.gameId
         });
     }
-
-    /**
-     * Disconnect from server
-     */
-    disconnect() {
-        if (this.socket) {
-            this.socket.disconnect();
-            this.connected = false;
-        }
-    }
-
     /**
      * Check if connected
      */

@@ -252,7 +252,10 @@ class GameState:
             self.dice_duration = int(settings.get('dice_duration', 15))
             self.set_starting_cash(int(settings.get('starting_cash', 5000)))
 
+        # Set game status to active
         self.game_status = "active"
+
+        # Initialize game state
         self.current_phase = "trading"
         self.current_round = 1
         self.done_trading.clear()
@@ -266,6 +269,15 @@ class GameState:
 
         self.record_networth_snapshot()
         self.add_history_entry('phase', f"Game started - Trading Phase Round 1")
+
+        # Log for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"🎮 Game started successfully:")
+        logger.info(f"   Status: {self.game_status}")
+        logger.info(f"   Phase: {self.current_phase}")
+        logger.info(f"   Timer started at: {self.phase_timer_start}")
+        logger.info(f"   Trading duration: {self.trading_duration}s")
 
         return {"success": True}
 
@@ -293,18 +305,15 @@ class GameState:
 
     def should_end_trading_phase(self):
         """
-        SIMPLIFIED: Check if trading phase should end
+        Check if trading phase should end
         Returns: (should_end, reason)
         """
         if self.current_phase != "trading":
-            return False, None
-
+            return False, "not_trading"
         connected_slots = set(str(s) for s in self.get_connected_slots())
-
         # If no connected players, don't transition (game should end elsewhere)
         if not connected_slots:
-            return False, None
-
+            return False, "no_players"
         # Check if all connected players are done
         if connected_slots.issubset(self.done_trading):
             return True, "all_done"
@@ -313,20 +322,18 @@ class GameState:
         if self.phase_timer_start:
             elapsed = time.time() - self.phase_timer_start
             if elapsed >= self.phase_duration:
-                # Auto-mark all connected players as done
-                for slot in connected_slots:
-                    self.done_trading.add(slot)
                 return True, "timer_expired"
+            return False, f"timer_active_{int(self.phase_duration - elapsed)}s"
 
-        return False, None
+        return False, "waiting_for_timer"
 
     def should_auto_roll(self):
         """
-        SIMPLIFIED: Check if current player should be auto-rolled
+        Check if current player should be auto-rolled
         Returns: (should_roll, reason)
         """
         if self.current_phase != "dice":
-            return False, None
+            return False, "not_dice_phase"
 
         current_turn_str = str(self.current_turn)
 
@@ -341,10 +348,16 @@ class GameState:
         # Check timer
         if self.phase_timer_start:
             elapsed = time.time() - self.phase_timer_start
+            remaining = self.phase_duration - elapsed
+
             if elapsed >= self.phase_duration:
                 return True, "timer_expired"
+            else:
+                return False, f"timer_active_{int(remaining)}s_remaining"
+        else:
+            return False, "timer_not_started"
 
-        return False, None
+        return False, "unknown_reason"
 
     def change_game_phase(self):
         """Transition between trading and dice phases"""

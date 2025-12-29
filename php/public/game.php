@@ -196,8 +196,8 @@ $socketioServer = getenv('SOCKETIO_SERVER') ?: 'http://127.0.0.1:9999';
 <script>
     // Pass PHP data to JavaScript
     window.gameId = <?= json_encode($gameId) ?>;
-    window.currentPlayerId = <?= json_encode($currentPlayerId) ?>;
-    window.currentPlayerName = <?= json_encode($currentPlayerName) ?>;
+    window.playerId = <?= json_encode($currentPlayerId) ?>;
+    window.playerName = <?= json_encode($currentPlayerName) ?>;
     window.SOCKETIO_SERVER = <?= json_encode($socketioServer) ?>;
 
     // These will be set by Socket.IO

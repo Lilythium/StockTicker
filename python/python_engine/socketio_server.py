@@ -3,8 +3,10 @@ Socket.IO Game Server
 """
 
 import logging
+
 import socketio
 from aiohttp import web
+import time
 
 from game_state import GameState
 
@@ -29,6 +31,7 @@ sio.attach(app)
 # Game storage
 games = {}
 sid_map = {}  # socket_id -> {game_id, player_id}
+active_joins = {}
 
 
 def get_game(game_id, player_count=4):
@@ -72,14 +75,30 @@ async def disconnect(sid):
 
         logger.info(f"❌ Client disconnected: {sid} (Player {player_id} in {game_id})")
 
+        # Don't immediately remove the player
+        # Just mark them as disconnected and give them time to reconnect
         if game_id in games:
             game = games[game_id]
-            game.remove_player(player_id)
-            await emit_game_state(game_id)
+
+            # Only call remove_player if they've been gone for a while
+            # or if the game hasn't started yet
+            if game.game_status == 'waiting':
+                # In waiting room, remove immediately
+                game.remove_player(player_id)
+                await emit_game_state(game_id)
+            else:
+                # In active game, just mark as left but keep in game
+                # They can reconnect later
+                logger.info(f"   Player can reconnect to active game")
+                await emit_game_state(game_id)
 
         del sid_map[sid]
     else:
         logger.info(f"❌ Client disconnected: {sid} (unknown)")
+
+    # Clean up join tracking
+    if sid in active_joins:
+        del active_joins[sid]
 
 
 @sio.event
@@ -90,6 +109,19 @@ async def join_game(sid, data):
         player_id = str(data.get('player_id', ''))
         player_name = data.get('player_name', 'Unknown')
         player_count = data.get('player_count', 4)
+
+        # DEDUPLICATION: Check if this sid is already joining
+        if sid in active_joins:
+            prev_game, prev_player, prev_time = active_joins[sid]
+            elapsed = time.time() - prev_time
+
+            # If same game/player and less than 2 seconds ago, skip
+            if prev_game == game_id and prev_player == player_id and elapsed < 2.0:
+                logger.warning(f"⚠️ Duplicate join request from {sid} for {game_id} (ignored)")
+                return
+
+        # Track this join attempt
+        active_joins[sid] = (game_id, player_id, time.time())
 
         logger.info(f"📥 Join request: {player_name} -> {game_id}")
 
@@ -104,9 +136,15 @@ async def join_game(sid, data):
         else:
             game = get_game(game_id, player_count)
 
+        # Check if this sid is already in the room (reconnection)
+        # If so, don't track as a duplicate connection
+        existing_sid = None
+        if sid in sid_map:
+            existing_sid = sid
+
         # Track this connection
         sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
-        sio.enter_room(sid, game_id)
+        await sio.enter_room(sid, game_id)
 
         # Add or reconnect player
         result = game.add_player(player_id, player_name)
@@ -123,10 +161,20 @@ async def join_game(sid, data):
 
     except Exception as e:
         logger.error(f"❌ Error in join_game: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
         await sio.emit('join_result', {
             'success': False,
             'error': str(e)
         }, room=sid)
+    finally:
+        # Clean up tracking after a delay
+        async def cleanup_join_tracking(target_sid):
+            await sio.sleep(3.0)
+            active_joins.pop(target_sid, None)
+
+        sio.start_background_task(cleanup_join_tracking, sid)
 
 
 @sio.event
@@ -172,10 +220,20 @@ async def start_game(sid, data):
         logger.info(f"🎮 Start game request: {game_id} with {settings}")
 
         game = get_game(game_id)
+
+        # Log current state before starting
+        logger.info(f"   Current status: {game.game_status}")
+        logger.info(f"   Active players: {len(game.get_active_slots())}")
+
         result = game.start_game(settings)
 
         if result.get('success'):
+            # Verify the game status was actually changed
             logger.info(f"✅ Game {game_id} started!")
+            logger.info(f"   New status: {game.game_status}")
+            logger.info(f"   Phase: {game.current_phase}")
+            logger.info(f"   Timer start: {game.phase_timer_start}")
+            logger.info(f"   Phase duration: {game.phase_duration}s")
 
             await sio.emit('game_started', {
                 'success': True,
@@ -184,12 +242,15 @@ async def start_game(sid, data):
 
             await emit_game_state(game_id)
         else:
+            logger.error(f"❌ Failed to start game {game_id}: {result.get('message')}")
             await sio.emit('error', {
                 'message': result.get('message', 'Failed to start game')
             }, room=sid)
 
     except Exception as e:
         logger.error(f"❌ Error in start_game: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         await sio.emit('error', {'message': str(e)}, room=sid)
 
 
@@ -436,38 +497,58 @@ async def background_monitor():
     Background task to check for auto-transitions
     Runs every 1 second
     """
-    logger.info("🎮 Background monitor started!")
+    logger.info("🎮 Background monitor STARTED and RUNNING!")
 
     check_counter = 0
 
     while True:
-        await sio.sleep(1.0)
-        check_counter += 1
+        try:
+            await sio.sleep(1.0)
+            check_counter += 1
 
-        # Heartbeat every 30 seconds
-        if check_counter % 30 == 0:
-            active_games = [gid for gid, g in games.items() if g.game_status == 'active']
-            if active_games:
-                logger.info(f"💓 Monitor heartbeat - Active games: {len(active_games)}")
+            # Heartbeat every 10 seconds for testing (change back to 30 later)
+            if check_counter % 10 == 0:
+                active_games = [gid for gid, g in games.items() if g.game_status == 'active']
+                logger.info(f"💓 HEARTBEAT #{check_counter} - Active games: {len(active_games)}")
 
-        # Check all active games
-        for game_id, game in list(games.items()):
-            if game.game_status != 'active':
-                continue
+                if active_games:
+                    for gid in active_games:
+                        g = games[gid]
+                        logger.info(f"   └─ {gid}: Phase={g.current_phase}, "
+                                    f"Round={g.current_round}/{g.max_rounds}, "
+                                    f"Timer={int(g.get_time_remaining())}s")
 
-            try:
+            # Check all active games
+            for game_id, game in list(games.items()):
+                if game.game_status != 'active':
+                    continue
+
                 await check_and_handle_transitions(game_id)
-            except Exception as e:
-                logger.error(f"❌ Error checking {game_id}: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ Error in background monitor: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Continue running even if there's an error
 
 
 async def start_background_tasks(app):
     """Start background monitor"""
+    logger.info("🚀 Starting background tasks...")
     app['game_monitor'] = sio.start_background_task(background_monitor)
-    logger.info("✅ Background monitor initialized")
+    logger.info("✅ Background monitor task created")
+
+    await sio.sleep(0.5)
+    logger.info("✅ Background monitor initialization complete")
+
+
+async def cleanup_background_tasks(app):
+    """Clean up on shutdown"""
+    logger.info("🛑 Shutting down background tasks...")
 
 
 app.on_startup.append(start_background_tasks)
+app.on_cleanup.append(cleanup_background_tasks)
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Socket.IO game server on port 9999...")
