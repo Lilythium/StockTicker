@@ -3,9 +3,7 @@
 *.log
 
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
+python/python_engine/__pycache__
 
 # Environment/OS files
 .DS_Store
@@ -17,4 +15,3 @@ Thumbs.db
 
 # Local configuration/Environment
 .env
-config.local.php
