@@ -5,7 +5,7 @@
 
 window.APP_CONFIG = {
     // Socket.IO server URL - change this to your server
-    SOCKETIO_SERVER: 'http://127.0.0.1:9999',
+    SOCKETIO_SERVER: window.location.origin,
     
     // Audio paths
     AUDIO: {
