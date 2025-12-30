@@ -531,7 +531,7 @@ class GameState:
             history_msg = f"🎲 {player_name} rolled: "
 
         if action == 'div':
-            if self.stocks[stock] <= 1.00:
+            if self.stocks[stock] < 1.00:
                 history_msg += f"{stock} dividend - dividends not payable."
             else:
                 owners = []
