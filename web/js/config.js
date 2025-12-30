@@ -4,7 +4,7 @@
  */
 
 window.APP_CONFIG = {
-    // Socket.IO server URL - change this to your server
+    // Socket.IO server URL
     SOCKETIO_SERVER: window.location.origin,
     
     // Audio paths
