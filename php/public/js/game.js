@@ -33,8 +33,32 @@ let animationInProgress = false;
 let isProcessingState = false;
 let pendingStateUpdate = null;
 
+// Timer management
+let localTimerInterval = null;
+let localTimeRemaining = 0;
+let lastServerTime = 0;
+
+// Audio unlock
+let audioUnlocked = false;
+
 /* ===== AUDIO HELPERS ===== */
+function unlockAudio() {
+    if (audioUnlocked) return;
+    
+    // Play silent audio to unlock audio context
+    const silentAudio = new Audio();
+    silentAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhAC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA4T/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////';
+    silentAudio.play().catch(e => console.log('Audio unlock failed:', e));
+    audioUnlocked = true;
+    console.log('🔊 Audio unlocked');
+}
+
 function playSound(pathOrCategory) {
+    // Unlock audio on first user interaction
+    if (!audioUnlocked) {
+        unlockAudio();
+    }
+    
     let file;
     if (AUDIO_PATHS[pathOrCategory]) {
         const entry = AUDIO_PATHS[pathOrCategory];
@@ -55,6 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     console.log('🎮 Initializing Game UI (Server Timer Mode)...');
+
+    // Unlock audio on first user interaction
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
 
     window.gameSocket = new GameSocketClient(window.SOCKETIO_SERVER || 'http://127.0.0.1:9999');
 
@@ -172,12 +200,30 @@ function setupSocketHandlers() {
         showPhaseNotification(data.message || `Phase changed to ${newPhase}`);
     });
 
-    gameSocket.onGameOver = (data) => {
-        playSound('ui/gameOver');
-        setTimeout(() => {
-            window.location.href = `game_over.php?game_id=${window.gameId}`;
-        }, 2000);
-    };
+    // Game over
+    gameSocket.socket.on('game_over', (data) => {
+        console.log('🏁 Game over!', data);
+        
+        if (!isRedirecting) {
+            isRedirecting = true;
+            
+            // Clear timer
+            if (localTimerInterval) {
+                clearInterval(localTimerInterval);
+                localTimerInterval = null;
+            }
+            
+            if (gameSocket.onGameOver) {
+                gameSocket.onGameOver(data);
+            }
+            
+            playSound('ui/gameOver');
+            
+            setTimeout(() => {
+                window.location.href = `game_over.php?game_id=${gameSocket.gameId}`;
+            }, 2000);
+        }
+    });
 }
 
 /* ===== MAIN STATE HANDLER ===== */
@@ -223,9 +269,51 @@ async function processGameState(state) {
         if (!isRedirecting) {
             isRedirecting = true;
             console.log('🏁 Game over, redirecting...');
+            
+            // Clear timer
+            if (localTimerInterval) {
+                clearInterval(localTimerInterval);
+                localTimerInterval = null;
+            }
+            
+            // Play game over sound
+            playSound('ui/gameOver');
+            
+            // Show game over message
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                animation: fadeIn 0.3s;
+            `;
+
+            const message = document.createElement('div');
+            message.style.cssText = `
+                font-family: 'Arvo', serif;
+                font-size: 3rem;
+                font-weight: bold;
+                color: white;
+                text-transform: uppercase;
+                text-shadow: 3px 3px 0 #000;
+                animation: pulse 1s infinite;
+            `;
+            message.textContent = '🏁 Game Over!';
+
+            overlay.appendChild(message);
+            document.body.appendChild(overlay);
+            
+            // Redirect after animation
             setTimeout(() => {
                 window.location.href = `game_over.php?game_id=${window.gameId}`;
-            }, 500);
+            }, 1500);
         }
         return;
     }
@@ -298,7 +386,14 @@ async function processGameState(state) {
         if (mySlot && state.players[mySlot]) {
             window.currentPlayerCash = state.players[mySlot].cash || 0;
             const myDoneTrading = state.players[mySlot].done_trading || false;
+            
+            // Update done trading checkbox based on server state
             updateDoneTradingCheckbox(myDoneTrading);
+            
+            // If we're done trading, disable controls
+            if (myDoneTrading && state.current_phase === 'trading') {
+                disableTradingControls();
+            }
         }
     }
 
@@ -488,18 +583,45 @@ function updateTimerDisplay(state) {
     const timerDisplay = document.getElementById('timer');
     if (!timerDisplay || state.time_remaining === undefined) return;
 
-    // Display server time (for visualization only)
+    // Clear existing interval
+    if (localTimerInterval) {
+        clearInterval(localTimerInterval);
+        localTimerInterval = null;
+    }
+
+    // Get server time
     const serverTime = Math.floor(state.time_remaining);
+    lastServerTime = serverTime;
+    localTimeRemaining = serverTime;
     
-    const mins = Math.floor(serverTime / 60);
-    const secs = serverTime % 60;
+    // Display immediately
+    displayTimer(localTimeRemaining);
+    
+    // Start local countdown for smooth updates
+    if (serverTime > 0 && state.status === 'active') {
+        localTimerInterval = setInterval(() => {
+            localTimeRemaining = Math.max(0, localTimeRemaining - 1);
+            displayTimer(localTimeRemaining);
+            
+            // Stop at 0
+            if (localTimeRemaining <= 0) {
+                clearInterval(localTimerInterval);
+                localTimerInterval = null;
+            }
+        }, 1000);
+    }
+}
+
+function displayTimer(seconds) {
+    const timerDisplay = document.getElementById('timer');
+    if (!timerDisplay) return;
+    
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
     timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     
     // Visual warning when low
-    timerDisplay.style.color = (serverTime <= 10 && serverTime > 0) ? '#ef4444' : '';
-    
-    // Note: We NO LONGER create a local countdown
-    // The server will send phase_transition events when time expires
+    timerDisplay.style.color = (seconds <= 10 && seconds > 0) ? '#ef4444' : '';
 }
 
 function showPhaseNotification(message) {
@@ -571,11 +693,12 @@ function updateDoneTradingCheckbox(isDone) {
     const checkboxHeader = document.querySelector('.checkbox-header label');
     const doneControl = document.querySelector('.done-trading-control');
 
+    if (!checkbox) return;
+
     if (isDone) {
-        if (checkbox) {
-            checkbox.checked = true;
-            checkbox.disabled = true;
-        }
+        // Mark as done
+        checkbox.checked = true;
+        checkbox.disabled = true;
 
         if (checkboxBox) {
             checkboxBox.classList.add('checked');
@@ -587,6 +710,25 @@ function updateDoneTradingCheckbox(isDone) {
 
         if (doneControl) {
             doneControl.classList.add('checked');
+        }
+    } else {
+        // Not done - ensure checkbox is enabled in trading phase
+        checkbox.checked = false;
+        
+        if (window.currentPhase === 'trading') {
+            checkbox.disabled = false;
+        }
+
+        if (checkboxBox) {
+            checkboxBox.classList.remove('checked');
+        }
+
+        if (checkboxHeader) {
+            checkboxHeader.textContent = 'Done Trading?';
+        }
+
+        if (doneControl) {
+            doneControl.classList.remove('checked');
         }
     }
 }
@@ -1090,6 +1232,12 @@ function showError(message) {
 window.showError = showError;
 
 window.addEventListener('beforeunload', () => {
+    // Clear timer
+    if (localTimerInterval) {
+        clearInterval(localTimerInterval);
+        localTimerInterval = null;
+    }
+    
     if (gameSocket) {
         hasInitialized = false;
     }
