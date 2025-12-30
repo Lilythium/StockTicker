@@ -1,12 +1,12 @@
 """
 Combined Server - Serves both Socket.IO and static files
-No PHP required!
 """
 
 import logging
 import socketio
 from aiohttp import web
 import os
+import time
 
 # Import game logic
 from game_state import GameState
@@ -34,6 +34,7 @@ sio.attach(app)
 games = {}
 sid_map = {}
 active_joins = {}
+finished_games_timestamps = {}  # Track when games finish
 
 
 def get_game(game_id, player_count=4):
@@ -76,6 +77,7 @@ async def disconnect(sid):
         if game_id in games:
             game = games[game_id]
 
+            # Only remove player if game is still in waiting
             if game.game_status == 'waiting':
                 game.remove_player(player_id)
                 await emit_game_state(game_id)
@@ -94,13 +96,25 @@ async def join_game(sid, data):
 
         logger.info(f"📥 Join request: {player_name} -> {game_id}")
 
-        # Reset finished games
+        # Check if game is finished
         if game_id in games:
             game = games[game_id]
+            
             if game.game_over or game.game_status == 'finished':
-                logger.info(f"♻️ Resetting finished game {game_id}")
-                del games[game_id]
+                # Game is finished - just send the final state, don't reset
+                logger.info(f"📊 Sending finished game state for {game_id}")
+                
+                sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
+                await sio.enter_room(sid, game_id)
+                
+                await sio.emit('join_result', {
+                    'success': True,
+                    'game_state': game.get_game_state()
+                }, room=sid)
+                
+                return
 
+        # Game is active or waiting - proceed normally
         game = get_game(game_id, player_count)
         sid_map[sid] = {'game_id': game_id, 'player_id': player_id}
         await sio.enter_room(sid, game_id)
@@ -132,7 +146,11 @@ async def leave_game(sid, data):
         logger.info(f"🚪 Leave request: {player_id}")
 
         game = get_game(game_id)
-        game.remove_player(player_id)
+        
+        # Only actually remove player if game is waiting
+        # If game is finished, just disconnect them
+        if game.game_status == 'waiting':
+            game.remove_player(player_id)
 
         if sid in sid_map:
             del sid_map[sid]
@@ -247,6 +265,9 @@ async def roll_dice(sid, data):
             await emit_game_state(game_id)
 
             if game.game_over:
+                # Mark game as finished with timestamp
+                finished_games_timestamps[game_id] = time.time()
+                
                 await sio.emit('game_over', {
                     'winner': game.winner,
                     'final_rankings': game.get_final_rankings()
@@ -254,6 +275,22 @@ async def roll_dice(sid, data):
 
     except Exception as e:
         logger.error(f"❌ Error in roll_dice: {e}")
+
+
+@sio.event
+async def get_state(sid, data):
+    """Handle explicit state request"""
+    try:
+        game_id = data.get('game_id')
+        if game_id and game_id in games:
+            game = games[game_id]
+            await sio.emit('game_state_update', game.get_game_state(), room=sid)
+        else:
+            await sio.emit('error', {
+                'message': 'Game not found'
+            }, room=sid)
+    except Exception as e:
+        logger.error(f"❌ Error in get_state: {e}")
 
 
 async def handle_trading_end(game_id):
@@ -294,6 +331,9 @@ async def handle_auto_roll(game_id):
             await emit_game_state(game_id)
 
             if game.game_over:
+                # Mark game as finished with timestamp
+                finished_games_timestamps[game_id] = time.time()
+                
                 await sio.emit('game_over', {
                     'winner': game.winner,
                     'final_rankings': game.get_final_rankings()
@@ -325,17 +365,48 @@ async def check_and_handle_transitions(game_id):
         logger.error(f"❌ Error in check_and_handle_transitions: {e}")
 
 
+async def cleanup_old_games():
+    """Remove finished games older than 15 minutes"""
+    try:
+        current_time = time.time()
+        games_to_remove = []
+        
+        for game_id, finish_time in list(finished_games_timestamps.items()):
+            # Remove games finished more than 1hr ago
+            if current_time - finish_time > 3600:  
+                games_to_remove.append(game_id)
+        
+        for game_id in games_to_remove:
+            if game_id in games:
+                logger.info(f"🗑️ Cleaning up old finished game: {game_id}")
+                del games[game_id]
+            if game_id in finished_games_timestamps:
+                del finished_games_timestamps[game_id]
+                
+    except Exception as e:
+        logger.error(f"❌ Error in cleanup_old_games: {e}")
+
+
 async def background_monitor():
-    """Background task to check for auto-transitions"""
+    """Background task to check for auto-transitions and cleanup"""
     logger.info("🎮 Background monitor started")
+
+    cleanup_counter = 0
 
     while True:
         try:
             await sio.sleep(1.0)
 
+            # Check transitions every second
             for game_id, game in list(games.items()):
                 if game.game_status == 'active':
                     await check_and_handle_transitions(game_id)
+
+            # Cleanup old games every 60 seconds
+            cleanup_counter += 1
+            if cleanup_counter >= 60:
+                await cleanup_old_games()
+                cleanup_counter = 0
 
         except Exception as e:
             logger.error(f"❌ Error in background monitor: {e}")
@@ -345,12 +416,11 @@ async def background_monitor():
 
 async def index(request):
     """Serve index.html for all routes (SPA)"""
-    # Go up two levels from python_engine, then into php/public
     static_dir = os.path.join(
-        os.path.dirname(__file__),  # python_engine
-        '..',                       # python  
-        '..',                       # stock_ticker
-        'web',                      # web
+        os.path.dirname(__file__),
+        '..',
+        '..',
+        'web',
     )
     index_file = os.path.join(static_dir, 'index.html')
     
@@ -361,30 +431,24 @@ async def index(request):
         return web.Response(text="Index file not found", status=404)
 
 # Setup routes
-# Calculate base static directory (same as above)
-base_dir = os.path.dirname(__file__)  # python_engine
+base_dir = os.path.dirname(__file__)
 static_dir = os.path.join(base_dir, '..', '..', 'web')
 
-# Verify the path exists
 if not os.path.exists(static_dir):
     logger.error(f"Static directory not found: {static_dir}")
-    # Try to find it relative to current directory
     static_dir = os.path.join(os.getcwd(), 'php', 'public')
     if not os.path.exists(static_dir):
         logger.error(f"Static directory not found at fallback: {static_dir}")
 
 logger.info(f"Serving static files from: {static_dir}")
 
-# Add static routes
 app.router.add_static('/css', os.path.join(static_dir, 'css'))
 app.router.add_static('/js', os.path.join(static_dir, 'js'))
 app.router.add_static('/audio', os.path.join(static_dir, 'audio'))
 
-# SPA routes - serve index.html for all other routes
 app.router.add_get('/', index)
-app.router.add_get('/{path:.*}', index)  # SPA fallback
+app.router.add_get('/{path:.*}', index)
 
-# Startup/shutdown
 async def start_background_tasks(app):
     """Start background monitor"""
     logger.info("🚀 Starting background tasks...")

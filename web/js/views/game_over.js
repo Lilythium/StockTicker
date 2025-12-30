@@ -5,27 +5,85 @@
 class GameOverView {
     constructor() {
         this.gameState = null;
+        this.stateReceived = false;
     }
 
     async render(container, params) {
-        // Get game state from socket or stored state
+        // Get game ID from session
         const gameId = SessionManager.getGameId();
         
         if (!gameId) {
-            // No game ID, redirect to lobby
+            console.log('❌ No game ID, redirecting to lobby');
             window.router.navigate('/');
             return;
         }
 
-        // Request final state
+        // Show loading state
+        container.innerHTML = `
+            <div class="end-container">
+                <header class="end-header">
+                    <h1>🎮 Game Over</h1>
+                    <p style="text-align: center; padding: 40px; color: #666;">
+                        Loading final results...
+                    </p>
+                </header>
+            </div>
+        `;
+
+        // Setup socket handler BEFORE requesting state
+        this.setupSocketHandlers();
+
+        // Ensure we're connected
+        if (!window.gameSocket.connected) {
+            console.log('🔌 Not connected, connecting...');
+            window.gameSocket.connect();
+            
+            // Wait for connection
+            await new Promise((resolve) => {
+                const checkConnection = setInterval(() => {
+                    if (window.gameSocket.connected) {
+                        clearInterval(checkConnection);
+                        resolve();
+                    }
+                }, 100);
+                
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    clearInterval(checkConnection);
+                    resolve();
+                }, 5000);
+            });
+        }
+
+        // Request state from server
+        console.log('📊 Requesting final game state...');
         window.gameSocket.requestState();
 
-        // Wait a moment for state to arrive
-        await this.waitForState();
+        // Wait for state to arrive
+        const stateReceived = await this.waitForState();
 
-        if (!this.gameState || !this.gameState.game_over) {
-            // Game not over, redirect appropriately
-            if (this.gameState?.status === 'active') {
+        if (!stateReceived || !this.gameState) {
+            console.error('❌ Failed to get game state');
+            container.innerHTML = `
+                <div class="end-container">
+                    <header class="end-header">
+                        <h1>⚠️ Error</h1>
+                        <p style="text-align: center; padding: 20px;">
+                            Unable to load game results. The game may have expired.
+                        </p>
+                        <button onclick="window.router.navigate('/')" class="btn-primary">
+                            Return to Lobby
+                        </button>
+                    </header>
+                </div>
+            `;
+            return;
+        }
+
+        // Check if game is actually over
+        if (!this.gameState.game_over) {
+            console.log('⚠️ Game not over, redirecting...');
+            if (this.gameState.status === 'active') {
                 window.router.navigate('/game');
             } else {
                 window.router.navigate('/waiting');
@@ -33,24 +91,42 @@ class GameOverView {
             return;
         }
 
+        // Render the game over screen
         this.renderGameOver(container);
+    }
+
+    setupSocketHandlers() {
+        window.gameSocket.onStateUpdate = (state) => {
+            console.log('📥 Received game state:', state);
+            this.gameState = state;
+            this.stateReceived = true;
+        };
     }
 
     async waitForState() {
         return new Promise((resolve) => {
-            // Setup temporary handler
-            const handler = (state) => {
-                this.gameState = state;
-                resolve();
-            };
+            // If we already have state, resolve immediately
+            if (this.stateReceived && this.gameState) {
+                resolve(true);
+                return;
+            }
 
-            window.gameSocket.onStateUpdate = handler;
+            // Wait for state update
+            let attempts = 0;
+            const maxAttempts = 30; // 3 seconds
 
-            // Timeout after 3 seconds
-            setTimeout(() => {
-                window.gameSocket.onStateUpdate = null;
-                resolve();
-            }, 3000);
+            const checkState = setInterval(() => {
+                attempts++;
+                
+                if (this.stateReceived && this.gameState) {
+                    clearInterval(checkState);
+                    resolve(true);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkState);
+                    console.error('❌ Timeout waiting for game state');
+                    resolve(false);
+                }
+            }, 100);
         });
     }
 
@@ -82,10 +158,8 @@ class GameOverView {
                         </div>
 
                         <div class="end-actions">
-                            <button onclick="window.currentGameOverView.rematch()" class="btn-primary" style="margin-bottom: 10px;">
-                                🔄 Rematch
-                            </button>
-                            <button onclick="window.currentGameOverView.returnToLobby()" class="btn-primary">
+                            <button onclick="window.currentGameOverView.returnToLobby()" 
+                                    class="btn-primary" style="margin-top: 20px;">
                                 Return to Lobby
                             </button>
                         </div>
@@ -96,7 +170,8 @@ class GameOverView {
                         <div class="chart-placeholder">
                             ${Object.keys(networthHistory).length > 0 ? 
                                 '<canvas id="networthChart" width="600" height="400"></canvas>' : 
-                                `<div class="placeholder-content">
+                                `<div class="placeholder-content" style="padding: 60px 20px; text-align: center;">
+                                    <p style="font-size: 18px; margin-bottom: 10px;">📈</p>
                                     <p>No performance history available</p>
                                     <p style="color: #666; font-size: 14px; margin-top: 10px;">
                                         (Net worth tracking will be available in future updates)
@@ -164,7 +239,7 @@ class GameOverView {
         const history = this.gameState?.history || [];
         
         if (history.length === 0) {
-            return '<p>No game history available</p>';
+            return '<p style="text-align: center; padding: 20px; color: #666;">No game history available</p>';
         }
 
         let html = '';
@@ -280,34 +355,6 @@ class GameOverView {
         });
     }
 
-    rematch() {
-        if (!confirm('Start a new game with the same settings?')) {
-            return;
-        }
-
-        // Generate new game ID
-        const newGameId = Math.floor(1000 + Math.random() * 9000).toString();
-
-        // Get settings from last game
-        const settings = {
-            max_rounds: this.gameState.max_rounds || 15,
-            trading_duration: this.gameState.trading_duration ? Math.floor(this.gameState.trading_duration / 60) : 2,
-            dice_duration: this.gameState.dice_duration || 15,
-            starting_cash: 5000 // Default, can't retrieve from game state easily
-        };
-
-        // Clear current game
-        window.gameSocket.leaveGame();
-        SessionManager.clear();
-
-        // Navigate to lobby with rematch params
-        window.router.navigate('/', {
-            game: newGameId,
-            rematch: true,
-            ...settings
-        });
-    }
-
     returnToLobby() {
         // Leave game and clear session
         window.gameSocket.leaveGame();
@@ -332,6 +379,7 @@ class GameOverView {
     }
 
     cleanup() {
+        window.gameSocket.onStateUpdate = null;
         window.currentGameOverView = null;
     }
 }

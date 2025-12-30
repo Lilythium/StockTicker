@@ -55,7 +55,8 @@ class GameSocket {
             }
             
             // Rejoin game if we have session data
-            if (SessionManager.isInGame()) {
+            // BUT don't auto-rejoin if on game-over screen
+            if (SessionManager.isInGame() && !window.location.hash.includes('game-over')) {
                 this.rejoinGame();
             }
         });
@@ -225,6 +226,8 @@ class GameSocket {
      */
     requestState() {
         const gameId = SessionManager.getGameId();
+        
+        console.log('📊 Requesting game state for:', gameId);
         
         this.socket.emit('get_state', {
             game_id: gameId
