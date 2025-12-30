@@ -1,0 +1,10 @@
+networks:
+  public:
+    external: true
+
+services:
+  stock_ticker:
+    build: ./
+    container_name: stock_ticker
+    networks:
+      - public
