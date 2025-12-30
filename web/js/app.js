@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGlobalSocketHandlers();
 
 	// Auto-connect socket if we have session data
-    if (window.session.isInGame()) {
+    if (SessionManager.isInGame()) {
         console.log('📡 Session found, connecting to server...');
         if (!window.gameSocket.connected) {
             window.gameSocket.connect();

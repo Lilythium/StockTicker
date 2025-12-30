@@ -55,7 +55,7 @@ class GameSocket {
             }
             
             // Rejoin game if we have session data
-            if (window.session.isInGame()) {
+            if (SessionManager.isInGame()) {
                 this.rejoinGame();
             }
         });
@@ -127,9 +127,9 @@ class GameSocket {
      * Rejoin game after disconnect
      */
     rejoinGame() {
-        const gameId = window.session.getGameId();
-        const playerId = window.session.getPlayerId();
-        const playerName = window.session.getPlayerName();
+        const gameId = SessionManager.getGameId();
+        const playerId = SessionManager.getPlayerId();
+        const playerName = SessionManager.getPlayerName();
         
         if (gameId && playerId) {
             console.log('🔄 Rejoining game...');
@@ -141,8 +141,8 @@ class GameSocket {
      * Leave game
      */
     leaveGame() {
-        const gameId = window.session.getGameId();
-        const playerId = window.session.getPlayerId();
+        const gameId = SessionManager.getGameId();
+        const playerId = SessionManager.getPlayerId();
         
         if (gameId && playerId) {
             this.socket.emit('leave_game', {
@@ -156,7 +156,7 @@ class GameSocket {
      * Start game
      */
     startGame(settings) {
-        const gameId = window.session.getGameId();
+        const gameId = SessionManager.getGameId();
         
         this.socket.emit('start_game', {
             game_id: gameId,
@@ -168,8 +168,8 @@ class GameSocket {
      * Buy shares
      */
     buyShares(stock, amount) {
-        const gameId = window.session.getGameId();
-        const playerSlot = window.session.getPlayerSlot();
+        const gameId = SessionManager.getGameId();
+        const playerSlot = SessionManager.getPlayerSlot();
         
         this.socket.emit('buy_shares', {
             game_id: gameId,
@@ -183,8 +183,8 @@ class GameSocket {
      * Sell shares
      */
     sellShares(stock, amount) {
-        const gameId = window.session.getGameId();
-        const playerSlot = window.session.getPlayerSlot();
+        const gameId = SessionManager.getGameId();
+        const playerSlot = SessionManager.getPlayerSlot();
         
         this.socket.emit('sell_shares', {
             game_id: gameId,
@@ -198,8 +198,8 @@ class GameSocket {
      * Mark done trading
      */
     markDoneTrading() {
-        const gameId = window.session.getGameId();
-        const playerSlot = window.session.getPlayerSlot();
+        const gameId = SessionManager.getGameId();
+        const playerSlot = SessionManager.getPlayerSlot();
         
         this.socket.emit('done_trading', {
             game_id: gameId,
@@ -211,8 +211,8 @@ class GameSocket {
      * Roll dice
      */
     rollDice() {
-        const gameId = window.session.getGameId();
-        const playerSlot = window.session.getPlayerSlot();
+        const gameId = SessionManager.getGameId();
+        const playerSlot = SessionManager.getPlayerSlot();
         
         this.socket.emit('roll_dice', {
             game_id: gameId,
@@ -224,7 +224,7 @@ class GameSocket {
      * Request current state
      */
     requestState() {
-        const gameId = window.session.getGameId();
+        const gameId = SessionManager.getGameId();
         
         this.socket.emit('get_state', {
             game_id: gameId
@@ -239,11 +239,11 @@ class GameSocket {
             const state = data.game_state;
             
             // Set player slot from server response
-            const playerId = window.session.getPlayerId();
+            const playerId = SessionManager.getPlayerId();
             if (state.players) {
                 for (const [slot, player] of Object.entries(state.players)) {
                     if (player.player_id === playerId) {
-                        window.session.setPlayerSlot(parseInt(slot));
+                        SessionManager.setPlayerSlot(parseInt(slot));
                         break;
                     }
                 }
@@ -251,7 +251,7 @@ class GameSocket {
             
             // Check if host
             if (state.host_player_id === playerId) {
-                window.session.setHost(true);
+                SessionManager.setHost(true);
             }
             
             this.handleStateUpdate(state);

@@ -44,13 +44,13 @@ class GameView {
     }
 
     async render(container, params) {
-        if (!window.session.isInGame()) {
+        if (!SessionManager.isInGame()) {
             window.router.navigate('/');
             return;
         }
 
-        const gameId = window.session.getGameId();
-        const playerName = window.session.getPlayerName();
+        const gameId = SessionManager.getGameId();
+        const playerName = SessionManager.getPlayerName();
 
         container.innerHTML = `
             <!-- Header -->
@@ -398,11 +398,11 @@ class GameView {
 
         // Identify player slot
         if (this.currentPlayerSlot === null && state.players) {
-            const playerId = window.session.getPlayerId();
+            const playerId = SessionManager.getPlayerId();
             for (const [slot, player] of Object.entries(state.players)) {
                 if (player.player_id === playerId) {
                     this.currentPlayerSlot = parseInt(slot);
-                    window.session.setPlayerSlot(parseInt(slot));
+                    SessionManager.setPlayerSlot(parseInt(slot));
                     console.log(`✅ Player slot: ${this.currentPlayerSlot}`);
                     break;
                 }
@@ -493,7 +493,7 @@ class GameView {
         if (!container) return;
 
         let html = '';
-        const playerId = window.session.getPlayerId();
+        const playerId = SessionManager.getPlayerId();
 
         Object.keys(players).forEach(slot => {
             const p = players[slot];
@@ -997,7 +997,7 @@ class GameView {
 
     leaveGame() {
         window.gameSocket.leaveGame();
-        window.session.clear();
+        SessionManager.clear();
         window.router.navigate('/');
     }
 

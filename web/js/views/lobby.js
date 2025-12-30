@@ -106,7 +106,7 @@ class LobbyView {
         const playerId = SessionManager.generatePlayerId();
 
         // Set session
-        window.session.setPlayer(playerId, playerName, gameId);
+        SessionManager.setPlayer(playerId, playerName, gameId);
 
         // Connect to Socket.IO
         if (!window.gameSocket.connected) {

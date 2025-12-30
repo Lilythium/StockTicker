@@ -350,8 +350,7 @@ async def index(request):
         os.path.dirname(__file__),  # python_engine
         '..',                       # python  
         '..',                       # stock_ticker
-        'php',                      # php
-        'public'                    # public
+        'web',                      # web
     )
     index_file = os.path.join(static_dir, 'index.html')
     
@@ -361,11 +360,10 @@ async def index(request):
         logger.error(f"Index file not found at: {index_file}")
         return web.Response(text="Index file not found", status=404)
 
-
 # Setup routes
 # Calculate base static directory (same as above)
 base_dir = os.path.dirname(__file__)  # python_engine
-static_dir = os.path.join(base_dir, '..', '..', 'php', 'public')
+static_dir = os.path.join(base_dir, '..', '..', 'web')
 
 # Verify the path exists
 if not os.path.exists(static_dir):
@@ -386,7 +384,6 @@ app.router.add_static('/audio', os.path.join(static_dir, 'audio'))
 app.router.add_get('/', index)
 app.router.add_get('/{path:.*}', index)  # SPA fallback
 
-
 # Startup/shutdown
 async def start_background_tasks(app):
     """Start background monitor"""
@@ -401,7 +398,6 @@ async def cleanup_background_tasks(app):
 
 app.on_startup.append(start_background_tasks)
 app.on_cleanup.append(cleanup_background_tasks)
-
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Stock Ticker server on port 9999...")

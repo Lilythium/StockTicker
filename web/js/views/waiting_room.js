@@ -10,12 +10,12 @@ class WaitingRoomView {
     }
 
     async render(container) {
-        if (!window.session.isInGame()) {
+        if (!SessionManager.isInGame()) {
             window.router.navigate('/');
             return;
         }
 
-        const gameId = window.session.getGameId();
+        const gameId = SessionManager.getGameId();
         const shareLink = `${window.location.origin}${window.location.pathname}#/?game=${gameId}`;
 
         container.innerHTML = `
@@ -167,7 +167,7 @@ class WaitingRoomView {
         this.updatePlayerList(state);
 
         // Update host controls
-        this.isHost = (state.host_player_id === window.session.getPlayerId());
+        this.isHost = (state.host_player_id === SessionManager.getPlayerId());
         this.updateHostControls(state);
     }
 
@@ -184,7 +184,7 @@ class WaitingRoomView {
 
             activePlayers++;
 
-            const isYou = (player.player_id === window.session.getPlayerId());
+            const isYou = (player.player_id === SessionManager.getPlayerId());
             const isHost = (player.player_id === state.host_player_id);
             const isDisconnected = player.has_left || false;
 
@@ -275,7 +275,7 @@ class WaitingRoomView {
 
     leaveGame() {
         window.gameSocket.leaveGame();
-        window.session.clear();
+        SessionManager.clear();
         window.router.navigate('/');
     }
 

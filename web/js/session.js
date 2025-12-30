@@ -1,29 +1,17 @@
 /**
- * Session Manager - Pure JavaScript
- * Replaces PHP session management
- * Uses memory storage (no localStorage due to artifact restrictions)
+ * Session Manager
+ * Manages sessionStorage
  */
 
 class SessionManager {
-    constructor() {
-        this.data = {
-            player_id: null,
-            player_name: null,
-            game_id: null,
-            player_slot: null,
-            joined_at: null,
-            is_host: false
-        };
-    }
-
     /**
      * Set player information
      */
-    setPlayer(playerId, playerName, gameId) {
-        this.data.player_id = playerId;
-        this.data.player_name = playerName;
-        this.data.game_id = gameId;
-        this.data.joined_at = Date.now();
+    static setPlayer(playerId, playerName, gameId) {
+        window.sessionStorage.player_id = playerId;
+        window.sessionStorage.player_name = playerName;
+        window.sessionStorage.game_id = gameId;
+        window.sessionStorage.joined_at = Date.now();
         
         console.log('✅ Session set:', {
             player_id: playerId,
@@ -35,80 +23,73 @@ class SessionManager {
     /**
      * Set player slot (assigned by server)
      */
-    setPlayerSlot(slot) {
-        this.data.player_slot = slot;
+    static setPlayerSlot(slot) {
+        window.sessionStorage.player_slot = slot;
         console.log('✅ Player slot set:', slot);
     }
 
     /**
      * Set host status
      */
-    setHost(isHost) {
-        this.data.is_host = isHost;
+    static setHost(isHost) {
+        window.sessionStorage.is_host = isHost;
     }
 
     /**
      * Check if player is in a game
      */
-    isInGame() {
-        return this.data.player_id && this.data.game_id;
+    static isInGame() {
+        return window.sessionStorage.player_id && window.sessionStorage.game_id;
     }
 
     /**
      * Get player ID
      */
-    getPlayerId() {
-        return this.data.player_id;
+    static getPlayerId() {
+        return window.sessionStorage.player_id;
     }
 
     /**
      * Get player name
      */
-    getPlayerName() {
-        return this.data.player_name || 'Unknown';
+    static getPlayerName() {
+        return window.sessionStorage.player_name || 'Unknown';
     }
 
     /**
      * Get game ID
      */
-    getGameId() {
-        return this.data.game_id;
+    static getGameId() {
+        return window.sessionStorage.game_id;
     }
 
     /**
      * Get player slot
      */
-    getPlayerSlot() {
-        return this.data.player_slot;
+    static getPlayerSlot() {
+        return window.sessionStorage.player_slot;
     }
 
     /**
      * Check if host
      */
-    isHost() {
-        return this.data.is_host;
+    static isHost() {
+        return window.sessionStorage.is_host;
     }
 
     /**
      * Get all session data
      */
-    getData() {
-        return { ...this.data };
+    static getData() {
+        return { ...window.sessionStorage };
     }
 
     /**
      * Clear session
      */
-    clear() {
+    static clear() {
         console.log('🗑️ Clearing session');
-        this.data = {
-            player_id: null,
-            player_name: null,
-            game_id: null,
-            player_slot: null,
-            joined_at: null,
-            is_host: false
-        };
+        window.sessionStorage.clear();
     }
 
     /**
@@ -129,6 +110,3 @@ class SessionManager {
         return id;
     }
 }
-
-// Create global session instance
-window.session = new SessionManager();

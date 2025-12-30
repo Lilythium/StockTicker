@@ -9,7 +9,7 @@ class GameOverView {
 
     async render(container, params) {
         // Get game state from socket or stored state
-        const gameId = window.session.getGameId();
+        const gameId = SessionManager.getGameId();
         
         if (!gameId) {
             // No game ID, redirect to lobby
@@ -57,8 +57,8 @@ class GameOverView {
     renderGameOver(container) {
         const rankings = this.gameState.final_rankings || [];
         const winner = this.gameState.winner || null;
-        const gameId = window.session.getGameId();
-        const playerId = window.session.getPlayerId();
+        const gameId = SessionManager.getGameId();
+        const playerId = SessionManager.getPlayerId();
         const networthHistory = this.gameState.networth_history || {};
 
         container.innerHTML = `
@@ -298,7 +298,7 @@ class GameOverView {
 
         // Clear current game
         window.gameSocket.leaveGame();
-        window.session.clear();
+        SessionManager.clear();
 
         // Navigate to lobby with rematch params
         window.router.navigate('/', {
@@ -311,7 +311,7 @@ class GameOverView {
     returnToLobby() {
         // Leave game and clear session
         window.gameSocket.leaveGame();
-        window.session.clear();
+        SessionManager.clear();
         
         // Navigate to lobby
         window.router.navigate('/');
