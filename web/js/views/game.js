@@ -240,7 +240,11 @@ class GameView {
         const btnRoll = document.getElementById('btnRollDice');
         const doneCheckbox = document.getElementById('doneTradingCheckbox');
 
-        stockSelect.addEventListener('change', () => {
+        stockSelect.addEventListener('focus', () => {
+        this.playSound('click');
+    	});
+		
+		stockSelect.addEventListener('change', () => {
             this.playSound('click');
             this.updateStockSelectColor();
             this.updateCostDisplay();

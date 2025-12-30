@@ -77,10 +77,25 @@ async def disconnect(sid):
         if game_id in games:
             game = games[game_id]
 
-            # Only remove player if game is still in waiting
-            if game.game_status == 'waiting':
-                game.remove_player(player_id)
-                await emit_game_state(game_id)
+            # Mark player as disconnected (for both waiting and active games)
+            result = game.remove_player(player_id)
+            
+            # Emit updated state
+            await emit_game_state(game_id)
+            
+            # Check if we need to handle transitions (only for active games)
+            if game.game_status == 'active' and not game.game_over:
+                # Check if game should end due to all players leaving
+                if result.get('game_over'):
+                    logger.info(f"🏁 Game {game_id} ended - all players disconnected")
+                    finished_games_timestamps[game_id] = time.time()
+                    await sio.emit('game_over', {
+                        'winner': game.winner,
+                        'final_rankings': game.get_final_rankings()
+                    }, room=game_id)
+                else:
+                    # Check for phase transitions
+                    await check_and_handle_transitions(game_id)
 
         del sid_map[sid]
 
@@ -147,16 +162,28 @@ async def leave_game(sid, data):
 
         game = get_game(game_id)
         
-        # Only actually remove player if game is waiting
-        # If game is finished, just disconnect them
-        if game.game_status == 'waiting':
-            game.remove_player(player_id)
+        # Mark player as disconnected
+        result = game.remove_player(player_id)
 
         if sid in sid_map:
             del sid_map[sid]
 
         await sio.leave_room(sid, game_id)
         await emit_game_state(game_id)
+        
+        # Check if we need to handle transitions (only for active games)
+        if game.game_status == 'active' and not game.game_over:
+            # Check if game should end due to all players leaving
+            if result.get('game_over'):
+                logger.info(f"🏁 Game {game_id} ended - all players left")
+                finished_games_timestamps[game_id] = time.time()
+                await sio.emit('game_over', {
+                    'winner': game.winner,
+                    'final_rankings': game.get_final_rankings()
+                }, room=game_id)
+            else:
+                # Check for phase transitions
+                await check_and_handle_transitions(game_id)
 
     except Exception as e:
         logger.error(f"❌ Error in leave_game: {e}")
@@ -354,11 +381,13 @@ async def check_and_handle_transitions(game_id):
         if game.current_phase == 'trading':
             should_end, reason = game.should_end_trading_phase()
             if should_end:
+                logger.info(f"🔄 Auto-ending trading phase for {game_id}: {reason}")
                 await handle_trading_end(game_id)
 
         elif game.current_phase == 'dice':
             should_roll, reason = game.should_auto_roll()
             if should_roll:
+                logger.info(f"🎲 Auto-rolling for {game_id}: {reason}")
                 await handle_auto_roll(game_id)
 
     except Exception as e:
@@ -366,7 +395,7 @@ async def check_and_handle_transitions(game_id):
 
 
 async def cleanup_old_games():
-    """Remove finished games older than 15 minutes"""
+    """Remove finished games older than 1 hour"""
     try:
         current_time = time.time()
         games_to_remove = []
