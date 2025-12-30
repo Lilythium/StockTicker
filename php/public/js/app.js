@@ -19,6 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Setup global socket event handlers
     setupGlobalSocketHandlers();
 
+	// Auto-connect socket if we have session data
+    if (window.session.isInGame()) {
+        console.log('📡 Session found, connecting to server...');
+        if (!window.gameSocket.connected) {
+            window.gameSocket.connect();
+        }
+    }
+
     console.log('✅ Stock Ticker - Ready!');
 });
 
