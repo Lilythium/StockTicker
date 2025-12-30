@@ -38,9 +38,19 @@ class GameView {
                 click: './audio/button-click.ogg',
                 gameOver: './audio/game-complete.mp3',
                 phaseChange: './audio/game-phase-change.mp3',
-                yourTurn: './audio/your-turn.mp3'
+                yourTurn: './audio/your-turn.mp3',
+				gameStart: './audio/game-start.mp3'
             }
         };
+
+		try {
+            const gameId = SessionManager.getGameId();
+            this.hasPlayedStartSound = sessionStorage.getItem('gameStartSoundPlayed_' + gameId) === 'true';
+        } catch (e) {
+            this.hasPlayedStartSound = false;
+        }
+		this.hasPlayedYourTurnSound = false;
+		this.lastTurnPlayedFor = null;
     }
 
     async render(container, params) {
@@ -414,8 +424,51 @@ class GameView {
         }
 
         // Track phase/turn
+        const previousPhase = this.currentPhase;
         this.currentPhase = state.current_phase;
         this.currentTurn = state.current_turn;
+
+        // Play game start sound (only once for all players when game first becomes active)
+        // Check if game just started: first round, first trading phase
+        if (!this.hasPlayedStartSound && 
+            state.status === 'active' && 
+            state.current_round === 1 && 
+            state.current_phase === 'trading') {
+            
+            console.log("🎮 Playing game start sound (beginning of game)");
+            this.playSound('gameStart');
+            this.hasPlayedStartSound = true;
+            
+            // Store in session so it doesn't replay on page refresh
+            try {
+                sessionStorage.setItem('gameStartSoundPlayed_' + SessionManager.getGameId(), 'true');
+            } catch (e) {
+                console.log("Could not save to sessionStorage");
+            }
+        }
+
+        // Play "your turn" sound when it's our turn in dice phase
+        if (state.current_phase === 'dice') {
+            const mySlot = this.currentPlayerSlot?.toString();
+            const currentTurn = state.current_turn?.toString();
+            const isMyTurn = currentTurn === mySlot;
+            
+            // Only play if it just became our turn (state changed from not our turn to our turn)
+            if (isMyTurn && !this.hasPlayedYourTurnSound) {
+                console.log("🎯 Playing 'your turn' sound");
+                this.playSound('yourTurn');
+                this.hasPlayedYourTurnSound = true;
+                this.lastTurnPlayedFor = currentTurn;
+            } else if (!isMyTurn) {
+                // Reset the flag when it's no longer our turn
+                this.hasPlayedYourTurnSound = false;
+                this.lastTurnPlayedFor = null;
+            }
+        } else {
+            // Reset turn sound flag when not in dice phase
+            this.hasPlayedYourTurnSound = false;
+            this.lastTurnPlayedFor = null;
+        }
 
         // Update UI
         if (state.stocks) {
@@ -1005,6 +1058,11 @@ class GameView {
         window.router.navigate('/');
     }
 
+	resetSoundFlags() {
+        this.hasPlayedYourTurnSound = false;
+        this.lastTurnPlayedFor = null;
+    }
+
     cleanup() {
         // Clear timer
         if (this.localTimerInterval) {
@@ -1020,5 +1078,6 @@ class GameView {
 
         // Clear reference
         window.currentGameView = null;
+		this.resetSoundFlags();
     }
 }

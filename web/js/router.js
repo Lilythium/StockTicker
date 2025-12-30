@@ -26,7 +26,7 @@ class Router {
             return;
         }
 
-        console.log('🧭 Navigating to:', path, params);
+        console.log('🧭 Navigating to:', path, 'with params:', params);
 
         const ViewClass = this.routes[path];
         
@@ -54,8 +54,17 @@ class Router {
             
             await view.render(appContainer, params);
 
+            // Build URL with params
+            let url = `#${path}`;
+            if (Object.keys(params).length > 0) {
+                const paramString = Object.entries(params)
+                    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+                    .join('&');
+                url += `?${paramString}`;
+            }
+
             // Update URL without reload
-            window.history.pushState({ path, params }, '', `#${path}`);
+            window.history.pushState({ path, params }, '', url);
 
         } catch (error) {
             console.error('❌ Navigation error:', error);

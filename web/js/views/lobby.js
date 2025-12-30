@@ -4,12 +4,14 @@
 
 class LobbyView {
     constructor() {
-        this.defaultGameId = SessionManager.generateGameId();
+        // Don't generate default ID here - wait for render
     }
 
     async render(container, params) {
         // Get game ID from URL or generate new one
-        const gameId = params.game || this.defaultGameId;
+        const gameId = params.game || SessionManager.generateGameId();
+        
+        console.log('🏠 Lobby rendering with params:', params, 'using gameId:', gameId);
 
         container.innerHTML = `
             <div class="lobby-container">
