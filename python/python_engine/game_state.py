@@ -65,7 +65,7 @@ class GameState:
             4: 10, 5: 20, 6: 20
         }
 
-	def cents_to_dollars(self, cents):
+    def cents_to_dollars(self, cents):
         """Convert integer cents to dollar float for display"""
         return cents / 100.0
 
@@ -595,7 +595,7 @@ class GameState:
         self.move_stock(stock, change)
 
         direction = "up" if action == "up" else "down"
-		price_dollars = self.cents_to_dollars(self.stocks[stock])
+        price_dollars = self.cents_to_dollars(self.stocks[stock])
         return f'{stock} moved {direction} {amount}¢ to ${price_dollars:.2f}'
 
     def move_stock(self, target, cents):
@@ -751,7 +751,7 @@ class GameState:
         if player_data['portfolio'][stock] < amount:
             return {'success': False, 'error': 'Not enough shares'}
 
-		sale_value_cents = amount * self.stocks[stock]
+        sale_value_cents = amount * self.stocks[stock]
 
         player_data['portfolio'][stock] -= amount
         player_data['cash'] += sale_value_cents
