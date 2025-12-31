@@ -6,12 +6,12 @@ class GameState:
     def __init__(self, player_count):
         # STOCKS
         self.stocks = {
-            "Gold": 1.00,
-            "Silver": 1.00,
-            "Oil": 1.00,
-            "Bonds": 1.00,
-            "Industrials": 1.00,
-            "Grain": 1.00
+            "Gold": 100,
+            "Silver": 100,
+            "Oil": 100,
+            "Bonds": 100,
+            "Industrials": 100,
+            "Grain": 100
         }
 
         # NET WORTH TRACKING
@@ -65,8 +65,18 @@ class GameState:
             4: 10, 5: 20, 6: 20
         }
 
-    def format_money(self, amount):
-        return f"${amount:,.2f}"
+	def cents_to_dollars(self, cents):
+        """Convert integer cents to dollar float for display"""
+        return cents / 100.0
+
+    def dollars_to_cents(self, dollars):
+        """Convert dollars to integer cents for storage"""
+        return int(round(dollars * 100))
+
+    def format_money(self, cents):
+        """Format integer cents as dollar string"""
+        dollars = cents / 100.0
+        return f"${dollars:,.2f}"
 
     def add_history_entry(self, entry_type, message):
         timestamp = time.time()
@@ -99,7 +109,7 @@ class GameState:
         self.done_trading.clear()
 
         base = {
-            "cash": 5000.00,
+            "cash": 5000,
             "portfolio": {
                 "Gold": 0, "Silver": 0, "Oil": 0,
                 "Bonds": 0, "Industrials": 0, "Grain": 0
@@ -585,23 +595,24 @@ class GameState:
         self.move_stock(stock, change)
 
         direction = "up" if action == "up" else "down"
-        return f'{stock} moved {direction} {amount}¢ to ${self.stocks[stock]:.2f}'
+		price_dollars = self.cents_to_dollars(self.stocks[stock])
+        return f'{stock} moved {direction} {amount}¢ to ${price_dollars:.2f}'
 
     def move_stock(self, target, cents):
-        self.stocks[target] += cents / 100
+        self.stocks[target] += cents
 
-        if self.stocks[target] >= 2.00:
+        if self.stocks[target] >= 200:
             for slot in self.get_active_slots():
                 slot_str = str(slot)
                 self.players[slot_str]["portfolio"][target] *= 2
-            self.stocks[target] = 1.00
+            self.stocks[target] = 100
             self.add_history_entry('system', f"📈 {target} SPLIT! All shares doubled, price reset to $1.00")
 
         if self.stocks[target] <= 0:
             for slot in self.get_active_slots():
                 slot_str = str(slot)
                 self.players[slot_str]["portfolio"][target] = 0
-            self.stocks[target] = 1.00
+            self.stocks[target] = 100
             self.add_history_entry('system', f"💥 {target} went BANKRUPT! All shares lost, price reset to $1.00")
 
     def get_networth(self, slot):
@@ -716,12 +727,12 @@ class GameState:
             return {'success': False, 'error': 'Invalid stock'}
 
         player_data = self.players[player]
-        total_cost = amount * self.stocks[stock]
+        total_cost_cents = amount * self.stocks[stock]
 
-        if player_data['cash'] < total_cost:
+        if player_data['cash'] < total_cost_cents:
             return {'success': False, 'error': 'Not enough cash'}
 
-        player_data['cash'] -= total_cost
+        player_data['cash'] -= total_cost_cents
         player_data['portfolio'][stock] += amount
 
         player_name = self.get_player_name(player)
@@ -740,8 +751,10 @@ class GameState:
         if player_data['portfolio'][stock] < amount:
             return {'success': False, 'error': 'Not enough shares'}
 
+		sale_value_cents = amount * self.stocks[stock]
+
         player_data['portfolio'][stock] -= amount
-        player_data['cash'] += amount * self.stocks[stock]
+        player_data['cash'] += sale_value_cents
 
         player_name = self.get_player_name(player)
         self.add_history_entry('trade', f"{player_name} sold {amount} {stock}")
