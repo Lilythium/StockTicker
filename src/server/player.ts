@@ -1,5 +1,5 @@
-import { Game } from "./game";
-import { PlayerId, PlayerState, Portfolio, Stock } from "../interface";
+import { Game } from "./game.js";
+import { PlayerId, PlayerState, Portfolio, Stock } from "../interface//index.js";
 
 export default class Player {
     #id: PlayerId;
@@ -62,8 +62,7 @@ export default class Player {
 
     state(): PlayerState {
         return {
-            is_active: true,
-            player_id: this.#id,
+            is_empty: false,
             name: this.#name,
             cash: this.#cash,
             portfolio: this.#portfolio,

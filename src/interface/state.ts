@@ -1,4 +1,4 @@
-import { PlayerId, Stock } from ".";
+import { Stock } from ".";
 
 /**
  * Player portfolio.
@@ -9,11 +9,10 @@ export type StockPrices = {[K in Stock]: number} & { readonly __brand: "Portfoli
 
 export type PlayerState = {
     /** Player slot is empty */
-    is_active: false
+    is_empty: true
 } | {
     /** Player slot is occupied */
-    is_active: true
-    player_id: PlayerId,
+    is_empty: false,
     name: string,
     cash: number,
     portfolio: Portfolio,
@@ -25,13 +24,16 @@ export type PlayerState = {
 
 export type GameStatus = "waiting" | "active" | "finished";
 
+export type GameSettings = {
+
+};
+
 export type GameState = {
-    status: GameStatus,
-    game_over: boolean,
-    player_count: number,
-    players: PlayerState[],
-    host_player_id: PlayerId,
-    connected_player_count: number,
-    active_player_count: number,
-    stocks: StockPrices
+    status: "waiting",
+    players: PlayerState[]
+} | {
+    status: "active",
+    players: PlayerState[]
+} | {
+    status: "finished"
 };

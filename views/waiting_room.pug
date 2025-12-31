@@ -1,0 +1,24 @@
+block head 
+    link(rel="stylesheet", href="/css/waiting_room.css")
+    script(type="module" src="/js/waiting_room.js" defer)
+
+block main
+    .page-wrapper
+        .waiting-container 
+            .game-info 
+                h1 Waiting Room
+
+            .game-id-display 
+                .game-id-label Game ID
+                .game-id-value #{game_id}
+            
+            .share-link
+                p <strong>📋 Share this link with friends:</strong>
+                    .copy-link
+                        input(
+                            type="text"
+                            id="gameLink"
+                            readonly
+                        )
+                        button#copyButton.copy-button Copy
+    

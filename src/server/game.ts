@@ -1,24 +1,25 @@
 import {
     PAR_PRICE,
     MAX_PLAYERS
-} from "./consts";
-import Player from "./player";
+} from "./consts.js";
+import Player from "./player.js";
 import {
     GameId,
+    GameSettings,
     GameState,
     GameStatus,
     PlayerId,
     PlayerState,
     Stock,
     StockPrices
-} from "../interface";
+} from "../interface/index.js";
 
 export class Game {
     #id: GameId;
-    #max_players: number;
+    #settings: GameSettings = {};
+    #max_players: number = MAX_PLAYERS;
     #players = new Map<PlayerId, Player>();
-    #host_player_id: PlayerId | null = null;
-    #config = null;
+    #host_player_index: number | null = null;
     #prices: StockPrices = {
         Gold: PAR_PRICE,
         Silver: PAR_PRICE,
@@ -29,19 +30,19 @@ export class Game {
     } as StockPrices;
     #status: GameStatus = "waiting";
 
-    constructor(id: GameId, max_players: number) {
+    constructor(id: GameId) {
         this.#id = id;
-        this.#max_players = max_players;
     }
 
     id(): GameId {
         return this.#id;
     }
 
-    add_player(player_id: PlayerId, player_name: string): Player | undefined {
+    add_player(player_name: string): Player | undefined {
+        let player_id = crypto.randomUUID() as PlayerId;
         if (this.#players.size < this.#max_players) {
             if (this.#players.size === 0) {
-                this.#host_player_id = player_id;
+                this.#host_player_index = this.#players.size;
             }
             let player = new Player(player_id, this, player_name);
             this.#players.set(player_id, player);
@@ -50,7 +51,7 @@ export class Game {
     }
 
     start(player_id: PlayerId): boolean {
-        if (this.#host_player_id !== player_id) {
+        if ([...this.#players.keys()][this.#host_player_index!] !== player_id) {
             return false;
         }
         if (this.#status === "waiting") {
@@ -66,28 +67,31 @@ export class Game {
     
     state(): GameState {
         let players: PlayerState[] = [];
-        let connected_player_count = 0;
+        let active_player_count = 0;
 
         for (let [_, player] of this.#players) {
             players.push(player.state());
             if (player.connected()) {
-                connected_player_count++;
+                active_player_count++;
             }
         }
 
         for (let i = players.length; i < MAX_PLAYERS; i++) {
-            players.push({ is_active: false });
+            players.push({ is_empty: true });
         }
 
-        return {
-            status: this.#status,
-            game_over: false,
-            player_count: 4,
-            players,
-            host_player_id: this.#host_player_id!,
-            connected_player_count,
-            active_player_count: connected_player_count,
-            stocks: this.#prices
-        };
+        switch(this.#status) {
+            case "waiting": return {
+                status: "waiting",
+                players
+            };
+            case "active": return {
+                status: "active",
+                players
+            }
+            case "finished": return {
+                status: "finished"
+            }
+        }
     }
 }

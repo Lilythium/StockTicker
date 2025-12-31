@@ -1,5 +1,0 @@
-# Socket.IO Server Core
-python-socketio>=5.11.0
-
-# Asynchronous Web Server Framework (used as the async_mode)
-aiohttp>=3.9.0

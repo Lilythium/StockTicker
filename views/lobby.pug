@@ -1,0 +1,40 @@
+extends template
+
+block head
+    link(rel="stylesheet", href="/css/lobby.css")
+    script(type="module" src="/js/lobby.js" defer)
+
+block main
+    .lobby-header
+        h1 Stock Ticker
+    
+    .lobby-option
+        h2 Player Registration
+        form#joinForm
+            .form-group
+                label(for="player_name")
+                input#player_name(
+                    type="text"
+                    placeholder="TYPE NAME HERE..."
+                    required
+                    maxlength=20
+                    autofocus
+                )
+            
+            .form-group 
+                label(for=game_id) Game ID
+                .input-wrapper
+                    input#game_id(type="text" required maxlength=30)
+                    span#randomiseBtn(title="Roll for Random ID").input-icon 🎲
+            
+            button(type="submt").btn-primary Join / Create Game
+
+    .lobby-option
+        .info-box
+            h2 Rules
+            ul
+                li <strong> 2-4 Players </strong> compete for profit.
+                li Start with <strong>$5,000 </strong> cash on hand.
+                li Trade in <strong>blocks of 500 shares</strong>.
+                li Markets move based on <strong>dice rolls</strong>.
+                li <strong>Disconnected?</strong> You can rejoin anytime!

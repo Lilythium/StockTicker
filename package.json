@@ -23,7 +23,7 @@
       "name": "Monika Trenholme"
     }
   ],
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/server/index.js",
   "scripts": {
     "build": "npx tsc",
@@ -31,10 +31,13 @@
   },
   "dependencies": {
     "express": "^5.2.1",
+    "express-session": "^1.18.2",
+    "pug": "^3.0.3",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.2",
     "@types/node": "^25.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

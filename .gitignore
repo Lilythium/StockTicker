@@ -1,17 +1,7 @@
-# Project specific logs
-/logs/
-*.log
-
-# Python
-python/python_engine/__pycache__
-
 # Environment/OS files
 .DS_Store
 Thumbs.db
 
 # Dependencies
-/node_modules/
-/vendor/
-
-# Local configuration/Environment
-.env
+node_modules/
+dist/
