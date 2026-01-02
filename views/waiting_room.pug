@@ -1,6 +1,7 @@
+extends template
+
 block head 
-    link(rel="stylesheet", href="/css/waiting_room.css")
-    script(type="module" src="/js/waiting_room.js" defer)
+    script(type="module" src="/js/client/waiting_room.js" defer)
 
 block main
     .page-wrapper
@@ -21,4 +22,63 @@ block main
                             readonly
                         )
                         button#copyButton.copy-button Copy
-    
+            
+            .players-waiting
+                h2 👥 Players (<span id="playerCount">0</span>/4)
+                #playerList.player-list
+                    .empty-slot Connecting...
+
+            if is_host
+                #hostControls
+                    button#startGameBtn.start-button(disabled) ⛔ Need 2+ Players
+
+            if !is_host
+                #waitingMessage(
+                    style="text-align: center; padding: 20px;"
+                ) ⏳ Waiting for host to start the game...
+
+            .action-buttons(style="margin-top: 20px; text-align: center;")
+                button#leaveBtn.btn-leave Leave Game
+            
+        if is_host
+            aside#hostSidebar.host-sidebar
+                .sidebar-header
+                    h3 ⚙️ GAME SETTINGS
+
+                .setting-group
+                    label Max Rounds: <span id="val_rounds">15</span>
+                    input#range_max_rounds.retro-slider(
+                        type="range"
+                        min="1"
+                        max="50"
+                        value="15"
+                    )
+                
+                .setting-group
+                    label Trading Timer: <span id="val_trading">2</span> min</label>
+                    input#range_trading_duration.retro-slider(
+                        type="range"
+                        min="1"
+                        max="10" value="2"
+                    )
+
+                .setting-group
+                    label Dice Timer: <span id="val_dice">15</span> sec
+                    input#range_dice_duration.retro-slider(
+                        type="range"
+                        min="0"
+                        max="30"
+                        value="10"
+                    )
+
+                .setting-group
+                    label Starting Cash: <span id="val_cash">$5000</span>
+                    input#range_starting_cash.retro-slider(
+                        type="range"
+                        min="500"
+                        max="20000"
+                        step="500"
+                        value="5000"
+                    )
+
+                button#resetBtnclass.btn-reset ↻ Reset Defaults

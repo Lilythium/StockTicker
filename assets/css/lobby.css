@@ -28,7 +28,7 @@ body {
 }
 
 /* ===== LAYOUT & CONTAINERS ===== */
-main {
+.lobby-container {
     max-width: 550px;
     margin: 40px auto;
     padding: 30px;

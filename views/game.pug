@@ -1,0 +1,98 @@
+extends template
+
+block head
+
+block main
+    .game-header
+        .header-unified-bar
+            .header-section.identity
+                span.game-id ID: #{game_id}
+                span.player-name-display #{player_name}
+
+            .header-section.phase-logic
+                span.phase-label.trading 🔄 LOADING...
+                #timer.timer --:--
+                .players-status 0/0
+                .turn-status WAITING...
+
+            .header-section.progress-exit
+                span.round-display Round 1/1
+                button#leaveBtn.btn-leave LEAVE
+
+    .action-form
+        .form-row.three-columns
+            .form-column.column-roll
+                button#btnRollDice.btn-roll-ready(disabled) ⏳ Loading...
+
+            .form-column.column-trade
+                .trade-form
+                    .trade-controls
+                        select#stockSelect.stock-select(disabled)
+                            option(value="Gold" style="background-color: #fde68a;") Gold
+                            option(value="Silver" style="background-color: #d8dcdf;") Silver
+                            option(value="Oil" style="background-color: #b3bce5;") Oil
+                            option(value="Bonds" style="background-color: #a8d2f0;") Bonds
+                            option(value="Industrials" style="background-color: #dcc2e8;") Industrials
+                            option(value="Grain" style="background-color: #f6bfa6;") Grain
+
+                        .amount-controls
+                            .custom-number-input
+                                input#amountInput.amount-input(
+                                    type="number"
+                                    value="500"
+                                    class="amount-input"
+                                    readonly
+                                )
+                                .spin-buttons
+                                    button.spin-btn.spin-up(disabled) ▲
+                                    button.spin-btn.spin-down(disabled) ▼
+                            .share-quick-buttons
+                                button.qty-btn(data-amount="500" disabled) 500
+                                button.qty-btn(data-amount="1000" disabled) 1K
+                                button.qty-btn(data-amount="2000" disabled) 2K
+                                button.qty-btn(data-amount="5000" disabled) 5K
+
+                        input#costDisplay.cost-display(
+                            type="text"
+                            value="COST: $0.00"
+                            readonly
+                        )
+
+                        .trade-action-buttons
+                            button#btnBuy.btn-buy(disabled) Buy
+                            button#btnSell.btn-sell(disabled) Sel;
+
+            .form-column.column-done
+                .done-trading-section
+                    .done-trading-control
+                        .checkbox-header
+                            label Done Trading?
+                        .checkbox-wrapper
+                            input#doneTradingCheckbox(
+                                type="checkbox"
+                                style="display:none;"                               
+                                disabled
+                            )
+                            label.checkbox-label(for="doneTradingCheckbox")
+                                .checkbox-box
+                                    span.checkmark ✓
+
+    .stocks_display
+
+    .players
+        #payersContainer.players-container
+            div(style="text-align: center; padding: 40px; color: #666;") Loading players...
+
+    #historyBar.history-bar
+        .history-header(onclick="")
+            span.history-title 📜 Game History
+            span#historyToggle.history-toggle ▼
+        #historyContent.history-content
+            .history-empty Connecting...
+
+    #dice-overlay.dice-overlay(style="display: none;")
+        .dice-tray
+            #die-stock.die ?
+            #die-action.die ?
+            #die-amount.die ?
+        #dice-text.dice-result-text Rolling...

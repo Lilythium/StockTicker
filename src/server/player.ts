@@ -14,9 +14,8 @@ export default class Player {
         Industrials: 0,
         Grain: 0
     } as Portfolio;
-    #done_trading: boolean = false;
     #has_left: boolean = false;
-    #is_connected: boolean = true;
+    #is_connected: boolean = false;
 
     constructor(id: PlayerId, game: Game, name: string) {
         this.#id = id;
@@ -52,22 +51,12 @@ export default class Player {
         this.#cash = cash;
     }
 
-    portfolio_evaluation(): number {
-        let portfolio_value = 0;
-        for (let stock of Object.keys(this.#portfolio)) {
-            portfolio_value += this.#game.stock_price(stock as Stock) * this.#portfolio[stock as Stock] / 100;
-        }
-        return portfolio_value;
-    }
-
     state(): PlayerState {
         return {
-            is_empty: false,
+            id: this.#id,
             name: this.#name,
             cash: this.#cash,
             portfolio: this.#portfolio,
-            net_worth: this.#cash + this.portfolio_evaluation(),
-            done_trading: this.#done_trading,
             is_connected: this.#is_connected,
             has_left: this.#has_left,
         }
