@@ -86,7 +86,7 @@ app.post("/join", (req, res) => {
         // Redirect to waiting room
         res.redirect(`/?game_id=${game_id}`);
     } else {
-        // TODO: Game already in session
+        // TODO: Game already in session error
         res.status(409);
         res.send("Game already in session");
     }

@@ -1,4 +1,4 @@
-import { PlayerId, Stock } from "./index.js";
+import { GameSettings, History, PlayerId, Stock } from "./index.js";
 
 /**
  * Player portfolio.
@@ -8,8 +8,8 @@ export type Portfolio = {[K in Stock]: number} & { readonly __brand: "Portfolio"
 export type StockPrices = {[K in Stock]: number} & { readonly __brand: "Portfolio" };
 
 export type PlayerState = {
-    id: PlayerId,
     name: string,
+    /** Player cash in cents */
     cash: number,
     portfolio: Portfolio,
     is_connected: boolean,
@@ -17,14 +17,24 @@ export type PlayerState = {
 };
 
 export type GameStatus = "waiting" | "active" | "finished";
+export type GamePhase = "trading" | "dice";
 
 export type GameState = {
     status: "waiting",
-    players: PlayerState[],
+    players: Record<PlayerId, PlayerState>,
     host_id: PlayerId
 } | {
     status: "active",
-    players: PlayerState[]
+    settings: GameSettings, // TODO: Pass settings to client separately?
+    phase: GamePhase,
+    round: number,
+    players: Record<PlayerId, PlayerState>,
+    prices: StockPrices,
+    history: History // TODO: Pass history to client separately?
 } | {
     status: "finished"
 };
+
+export type WaitingGameState = Extract<GameState, { status: "waiting" }>;
+export type ActiveGameState = Extract<GameState, { status: "active" }>;
+export type FinishedGameState = Extract<GameState, { status: "finished" }>;

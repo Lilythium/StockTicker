@@ -4,20 +4,24 @@ import {
     MAX_PLAYERS,
     PAR_PRICE,
     GameId,
+    GamePhase,
     GameState,
     GameStatus,
     GameSettings,
     PlayerId,
     PlayerState,
     Stock,
-    StockPrices
+    StockPrices,
+    PlayerAction,
+    PlayerEvent,
 } from "../interface/index.js";
 
 export class Game {
     #id: GameId;
+    #status: GameStatus = "waiting";
     #settings: GameSettings = DEFAULT_SETTINGS;
-    #players = new Map<PlayerId, Player>();
-    #host_id: PlayerId | undefined;
+    #phase: GamePhase = "trading";
+    #round: number = 1;
     #prices: StockPrices = {
         Gold: PAR_PRICE,
         Silver: PAR_PRICE,
@@ -26,7 +30,9 @@ export class Game {
         Industrials: PAR_PRICE,
         Grain: PAR_PRICE
     } as StockPrices;
-    #status: GameStatus = "waiting";
+    #players = new Map<PlayerId, Player>();
+    #host_id: PlayerId | undefined;
+    #event_history: PlayerEvent[] = [];
 
     constructor(id: GameId) {
         this.#id = id;
@@ -65,37 +71,74 @@ export class Game {
         return this.#host_id === player_id
     }
 
+    stock_price(stock: Stock): number {
+        return this.#prices[stock];
+    }
+
     /**
      * Game start request
      * @param player_id 
      * @returns if start request succeeded
      */
     start(player_id: PlayerId): boolean {
-        if (this.#host_id !== player_id) {
+        if (!this.is_host(player_id)) {
             return false;
         }
         if (this.#status === "waiting") {
             this.#status = "active";
+            for (const [_, player] of this.#players) {
+                player.start();
+            }
             return true;
         }
         return false;
     }
 
-    stock_price(stock: Stock): number {
-        return this.#prices[stock];
-    }
+    /**
+     * Process player's action
+     * @param action 
+     * @param player_id
+     * @returns if the action was processed
+     */
+    process_action(action: PlayerAction, player_id: PlayerId): boolean {
+        switch (action.kind) {
+            case "trade":
+                if (this.#phase !== "trading") return false;
+
+                const player = this.#players.get(player_id);
+                if (player == null) return false;
+
+                let succeeded = false;
+                switch (action.direction) {
+                    case "buy":
+                        succeeded = player.buy(
+                            action.stock,
+                            action.shares,
+                            this.#prices[action.stock]
+                        );
+                        break;
+
+                    case "sell":
+                        succeeded = player.buy(
+                            action.stock,
+                            action.shares,
+                            this.#prices[action.stock]
+                        );
+                        break;
+                }
+
+                if (succeeded) this.#event_history.push({ player: player_id, action });
+                return succeeded;
+            
+            case "roll":
+                return false
+        }
+    }    
     
     state(): GameState {
-        let players: PlayerState[] = [];
-        let active_player_count = 0;
-
-        let i = 0;
-        for (let [_, player] of this.#players) {
-            players.push(player.state());
-            if (player.connected()) {
-                active_player_count++;
-            }
-            i++;
+        const players: Record<PlayerId, PlayerState> = {};
+        for (const [id, player] of this.#players) {
+            players[id] = player.state();
         }
 
         switch(this.#status) {
@@ -106,7 +149,15 @@ export class Game {
             };
             case "active": return {
                 status: "active",
-                players
+                settings: this.#settings,
+                phase: this.#phase,
+                round: this.#round,
+                players,
+                prices: this.#prices,
+                history: {
+                    events: this.#event_history,
+                    net_worth: []
+                }
             }
             case "finished": return {
                 status: "finished"

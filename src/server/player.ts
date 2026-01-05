@@ -5,7 +5,8 @@ export default class Player {
     #id: PlayerId;
     #game: Game;
     #name: string;
-    #cash: number = 0;
+    /** Player's cash in cents */
+    #cash: number;
     #portfolio: Portfolio = {
         Gold: 0,
         Silver: 0,
@@ -16,11 +17,13 @@ export default class Player {
     } as Portfolio;
     #has_left: boolean = false;
     #is_connected: boolean = false;
+    #done_turn: boolean = false;
 
     constructor(id: PlayerId, game: Game, name: string) {
         this.#id = id;
         this.#game = game;
         this.#name = name;
+        this.#cash = game.settings().starting_cash;
     }
 
     id(): PlayerId {
@@ -35,6 +38,10 @@ export default class Player {
         return this.#name;
     }
 
+    start() {
+        this.#cash = this.#game.settings().starting_cash;
+    }
+
     connected(): boolean {
         return this.#is_connected;
     }
@@ -47,13 +54,37 @@ export default class Player {
         this.#has_left = true;
     }
 
-    set_cash(cash: number): void {
-        this.#cash = cash;
+    /**
+     * Buy stocks
+     * @param stock 
+     * @param amount 
+     * @param price 
+     * @returns whether the trade succeeded
+     */
+    buy(stock: Stock, amount: number, price: number) {
+        const value = amount * price;
+        if (this.#cash < value) return false;
+        this.#portfolio[stock] += amount;
+        this.#cash -= value;
+        return true;
+    }
+
+    /**
+     * Sell stocks
+     * @param stock 
+     * @param amount 
+     * @param price whether the trade succeeded
+     */
+    sell(stock: Stock, amount: number, price: number): boolean {
+        const value = amount * price;
+        if (this.#portfolio[stock] < amount) return false;
+        this.#cash += value;
+        this.#portfolio[stock] -= amount;
+        return true;
     }
 
     state(): PlayerState {
         return {
-            id: this.#id,
             name: this.#name,
             cash: this.#cash,
             portfolio: this.#portfolio,

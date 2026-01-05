@@ -1,8 +1,8 @@
 import {
     GameStatus,
-    GameState
+    GameState,
+    PlayerAction
 } from "../interface/index.js";
-import { GAME_ID } from "./params.js";
 
 declare const io: (...args: any[]) => any;
 
@@ -20,6 +20,10 @@ export default class SocketClient {
 
     start_game() {
         this.#io.emit("start_game");
+    }
+
+    submit_action(action: PlayerAction) {
+        this.#io.emit("action", action);
     }
 
     #on_update(game_state: GameState) {

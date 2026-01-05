@@ -5,6 +5,7 @@ import { Game } from "./game.js";
 import Player from "./player.js";
 import {
     GameId,
+    PlayerAction,
     PlayerId,
     PlayerToken
 } from "../interface/index.js";
@@ -17,7 +18,6 @@ export default class GameManager {
     constructor(http_server: http.Server) {
         this.#io = new Server(http_server);
         this.#io.on("connection", socket => this.#on_connection(socket));
-        this.#io.on("start_game", socket => this.#on_start_game(socket));
     }
 
     get_or_create_game(game_id: GameId): Game {
@@ -92,6 +92,7 @@ export default class GameManager {
         socket.join(game.id());
         socket.on("disconnect", () => this.#on_disconnect(socket));
         socket.on("start_game", () => this.#on_start_game(socket));
+        socket.on("action", action => this.#on_action(socket, action));
 
         this.post_game_update(game.id());
     }
@@ -114,7 +115,19 @@ export default class GameManager {
 
         const game = player.game();
         if(!game.start(player.id())) return;
-        console.log(`🕹️ game '${game.id()}' started`)
+        console.log(`🕹️ Game '${game.id()}' started`)
+        this.post_game_update(game.id());
+    }
+
+    #on_action(socket: Socket, action: PlayerAction) {
+        const player_token = socket.data.player_token as PlayerToken;
+        const player = this.get_player(player_token);
+        if (player === undefined) return;
+
+        console.log(`📨 Player action submitted: ${player.name()}, ${action.kind}`);
+        const game = player.game();
+        const processed = game.process_action(action, player.id());
+        if (!processed) return;
         this.post_game_update(game.id());
     }
 }

@@ -1,5 +1,12 @@
 import { ORIGIN, GAME_ID, CURRENT_PLAYER_ID } from "./params.js";
-import { DEFAULT_SETTINGS, GameSettings, GameState, MAX_PLAYERS } from "../interface/index.js";
+import {
+    DEFAULT_SETTINGS,
+    GameSettings,
+    GameState,
+    MAX_PLAYERS,
+    PlayerId,
+    WaitingGameState
+} from "../interface/index.js";
 import SocketClient from "./socket_client.js";
 
 const settings: GameSettings = DEFAULT_SETTINGS;
@@ -9,6 +16,7 @@ const player_list = document.getElementById("playerList") as HTMLDivElement;
 const start_game_button = document.getElementById("startGameBtn") as HTMLButtonElement;
 const socket_client = new SocketClient("waiting", io => {
     io.on("update", (game_state: GameState) => {
+        // Collapse GameState to WaitingGameState
         if (game_state.status != "waiting") return;
         update_players(game_state);
     });
@@ -56,19 +64,19 @@ start_game_button.addEventListener("click", () => {
     document.getElementById('val_cash')!.textContent = '$' + parseInt(target.value).toLocaleString();
 });
 
-function update_players(game_state: GameState) {
-    if(game_state.status != "waiting") return;
-
+function update_players(game_state: WaitingGameState) {
     let active_players = 0;
     let html = "";
     let i = 0;
 
-    for (i; i < game_state.players.length; i++) {
-        const player = game_state.players[i];
+    const ids = Object.keys(game_state.players) as PlayerId[];
+    for (i; i < ids.length; i++) {
+        const id = ids[i];
+        const player = game_state.players[ids[i]];
         if (player.is_connected) active_players++;
 
-        const is_host = player.id === game_state.host_id;
-        const is_you = player.id === CURRENT_PLAYER_ID;
+        const is_host = id === game_state.host_id;
+        const is_you = id === CURRENT_PLAYER_ID;
 
         html += `
             <div class="player-item ${is_you ? 'you' : ''} ${is_host ? 'host' : ''}">

@@ -1,6 +1,7 @@
 extends template
 
 block head
+    script(type="module" src="/js/client/game.js" defer)
 
 block main
     .game-header
@@ -27,7 +28,7 @@ block main
             .form-column.column-trade
                 .trade-form
                     .trade-controls
-                        select#stockSelect.stock-select(disabled)
+                        select#stockSelect.stock-select
                             option(value="Gold" style="background-color: #fde68a;") Gold
                             option(value="Silver" style="background-color: #d8dcdf;") Silver
                             option(value="Oil" style="background-color: #b3bce5;") Oil
@@ -44,13 +45,13 @@ block main
                                     readonly
                                 )
                                 .spin-buttons
-                                    button.spin-btn.spin-up(disabled) ▲
-                                    button.spin-btn.spin-down(disabled) ▼
+                                    button.spin-btn.spin-up ▲
+                                    button.spin-btn.spin-down ▼
                             .share-quick-buttons
-                                button.qty-btn(data-amount="500" disabled) 500
-                                button.qty-btn(data-amount="1000" disabled) 1K
-                                button.qty-btn(data-amount="2000" disabled) 2K
-                                button.qty-btn(data-amount="5000" disabled) 5K
+                                button.qty-btn(data-amount="500") 500
+                                button.qty-btn(data-amount="1000") 1K
+                                button.qty-btn(data-amount="2000") 2K
+                                button.qty-btn(data-amount="5000") 5K
 
                         input#costDisplay.cost-display(
                             type="text"
@@ -77,10 +78,39 @@ block main
                                 .checkbox-box
                                     span.checkmark ✓
 
-    .stocks_display
+    #stocksDisplay.stocks_display
+        table.stock-price-table
+            thead
+                tr
+                    th.corner-cell
+                    - for (let p = 0; p <= 200; p += 5)
+                        - const is_special = [0, 100, 200].includes(p);
+                        th(class=is_special ? 'price-header-special' : 'price-header') #{p}
+            tbody
+                -
+                    const rows = [
+                        { name: 'Gold', class: 'gold', display: 'Gold' },
+                        { name: 'Silver', class: 'silver', display: 'Silver' },
+                        { name: 'Oil', class: 'oil', display: 'Oil' },
+                        { name: 'Bonds', class: 'bonds', display: 'Bonds' },
+                        { name: 'Industrials', class: 'industrials', display: 'Indust.' },
+                        { name: 'Grain', class: 'grain', display: 'Grain' }
+                    ];
+                each row in rows
+                    tr(class=`stock-row ${row.class}-row`)
+                        th(class=`stock-header ${row.class}-header`) #{row.display}
+                        - for (let pC = 0; pC <= 200; pC += 5)
+                            - const special = [0, 100, 200].includes(pC);
+                            - const label = pC === 0 ? 'Off Market' : (pC === 100 ? 'Par' : (pC === 200 ? 'Split' : ''));
+                            td(
+                                class=`price-cell ${special ? 'price-cell-special' : ''}`
+                                data-stock=row.name
+                                data-price=pC
+                                data-label=label
+                            )
 
     .players
-        #payersContainer.players-container
+        #playersContainer.players-container
             div(style="text-align: center; padding: 40px; color: #666;") Loading players...
 
     #historyBar.history-bar
