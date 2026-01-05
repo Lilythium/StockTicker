@@ -1,12 +1,12 @@
-import SocketClient from "./socket_client.js";
+import SocketClient from "../socket_client.js";
 import {
     ActiveGameState,
     GameState,
     PlayerId,
     Stock,
     StockPrices
-} from "../interface/index.js";
-import { CURRENT_PLAYER_ID, format_money } from "./params.js";
+} from "../../interface/index.js";
+import { CURRENT_PLAYER_ID, format_money } from "../params.js";
 
 let current_state: ActiveGameState | undefined;
 

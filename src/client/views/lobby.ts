@@ -1,4 +1,4 @@
-import { GAME_ID } from "./params.js";
+import { GAME_ID } from "../params.js";
 
 const random_id = () => Math.floor(Math.random() * 10000).toString().padStart(4, "0");
 

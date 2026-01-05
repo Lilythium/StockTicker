@@ -1,4 +1,4 @@
-import { ORIGIN, GAME_ID, CURRENT_PLAYER_ID } from "./params.js";
+import { ORIGIN, GAME_ID, CURRENT_PLAYER_ID } from "../params.js";
 import {
     DEFAULT_SETTINGS,
     GameSettings,
@@ -6,8 +6,8 @@ import {
     MAX_PLAYERS,
     PlayerId,
     WaitingGameState
-} from "../interface/index.js";
-import SocketClient from "./socket_client.js";
+} from "../../interface/index.js";
+import SocketClient from "../socket_client.js";
 
 const settings: GameSettings = DEFAULT_SETTINGS;
 const game_link = document.getElementById("gameLink") as HTMLInputElement;
