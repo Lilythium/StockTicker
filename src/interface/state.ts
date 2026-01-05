@@ -13,7 +13,8 @@ export type PlayerState = {
     cash: number,
     portfolio: Portfolio,
     is_connected: boolean,
-    has_left: boolean
+    has_left: boolean,
+    done_turn: boolean
 };
 
 export type GameStatus = "waiting" | "active" | "finished";
@@ -21,14 +22,14 @@ export type GamePhase = "trading" | "dice";
 
 export type GameState = {
     status: "waiting",
-    players: Record<PlayerId, PlayerState>,
+    players: [PlayerId, PlayerState][],
     host_id: PlayerId
 } | {
     status: "active",
     settings: GameSettings, // TODO: Pass settings to client separately?
     phase: GamePhase,
     round: number,
-    players: Record<PlayerId, PlayerState>,
+    players: [PlayerId, PlayerState][],
     prices: StockPrices,
     history: History // TODO: Pass history to client separately?
 } | {

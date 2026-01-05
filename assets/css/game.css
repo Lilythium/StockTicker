@@ -642,9 +642,9 @@
 
 .checkbox-header { font-family: var(--retro-font); font-size: 13px; font-weight: bold; color: var(--ink-black); margin-bottom: 2px; }
 .checkbox-box { cursor: pointer; width: 32px !important; height: 32px !important; border: 3px solid var(--ink-black); background: white; display: flex; align-items: center; justify-content: center; box-shadow: 3px 3px 0 rgba(0,0,0,0.2); transition: all 0.2s; }
-.checkbox-box.checked { background: #2ecc71; border-color: #27ae60; }
 .checkbox-box .checkmark { font-size: 24px; color: white; font-weight: bold; opacity: 0; transition: opacity 0.2s; }
-input[type="checkbox"]:checked + .checkbox-label .checkbox-box .checkmark { opacity: 1; }
+input[type="checkbox"]:checked + .checkbox-label .checkmark { opacity: 1; }
+input[type="checkbox"]:checked + .checkbox-label .checkbox-box.checked { background: #2ecc71; border-color: #27ae60; }
 
 .checkbox-text { font-family: var(--ticker-font); font-size: 14px; font-weight: bold; color: var(--ink-black); }
 .checkbox-note { font-family: var(--ticker-font); font-size: 11px; color: #666; font-style: italic; margin-top: 5px; text-align: center; }

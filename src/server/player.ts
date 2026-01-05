@@ -42,6 +42,10 @@ export default class Player {
         this.#cash = this.#game.settings().starting_cash;
     }
 
+    is_done(): boolean {
+        return this.#done_turn;
+    }
+
     connected(): boolean {
         return this.#is_connected;
     }
@@ -83,6 +87,10 @@ export default class Player {
         return true;
     }
 
+    set_done(value: boolean) {
+        this.#done_turn = value;
+    }
+
     state(): PlayerState {
         return {
             name: this.#name,
@@ -90,6 +98,7 @@ export default class Player {
             portfolio: this.#portfolio,
             is_connected: this.#is_connected,
             has_left: this.#has_left,
+            done_turn: this.#done_turn
         }
     }
 }

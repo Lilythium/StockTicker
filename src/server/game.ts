@@ -75,6 +75,17 @@ export class Game {
         return this.#prices[stock];
     }
 
+    all_players_done(): boolean {
+        let all = true;
+        for (const [_, player] of this.#players) {
+            if (!player.is_done()) {
+                all = false;
+                break;
+            }
+        }
+        return all;
+    }
+
     /**
      * Game start request
      * @param player_id 
@@ -133,12 +144,27 @@ export class Game {
             case "roll":
                 return false
         }
-    }    
+    }
+
+    end_phase() {
+        switch (this.#phase) {
+            case "trading":
+                this.#phase = "dice";
+                break;
+            case "dice":
+                this.#phase = "trading";
+                break;
+        }
+
+        for (const [_, player] of this.#players) {
+            player.set_done(false);
+        }
+    }
     
     state(): GameState {
-        const players: Record<PlayerId, PlayerState> = {};
+        const players: [PlayerId, PlayerState][] = [];
         for (const [id, player] of this.#players) {
-            players[id] = player.state();
+            players.push([id as PlayerId, player.state()]);
         }
 
         switch(this.#status) {

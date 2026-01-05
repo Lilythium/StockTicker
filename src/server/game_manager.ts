@@ -93,6 +93,7 @@ export default class GameManager {
         socket.on("disconnect", () => this.#on_disconnect(socket));
         socket.on("start_game", () => this.#on_start_game(socket));
         socket.on("action", action => this.#on_action(socket, action));
+        socket.on("trading_check", value => this.#on_trading_check(socket, value));
 
         this.post_game_update(game.id());
     }
@@ -128,6 +129,18 @@ export default class GameManager {
         const game = player.game();
         const processed = game.process_action(action, player.id());
         if (!processed) return;
+        this.post_game_update(game.id());
+    }
+
+    #on_trading_check(socket: Socket, value: boolean) {
+        const player_token = socket.data.player_token as PlayerToken;
+        const player = this.get_player(player_token);
+        if (player === undefined) return;
+
+        console.log(`✅ Player trading checked: ${player.name()}`);
+        player.set_done(value);
+        const game = player.game();
+        if (game.all_players_done()) game.end_phase();
         this.post_game_update(game.id());
     }
 }

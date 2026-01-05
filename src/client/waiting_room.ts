@@ -69,11 +69,10 @@ function update_players(game_state: WaitingGameState) {
     let html = "";
     let i = 0;
 
-    const ids = Object.keys(game_state.players) as PlayerId[];
-    for (i; i < ids.length; i++) {
-        const id = ids[i];
-        const player = game_state.players[ids[i]];
-        if (player.is_connected) active_players++;
+    const players = game_state.players;
+    for (i; i < players.length; i++) {
+        const [id, state] = players[i];
+        if (state.is_connected) active_players++;
 
         const is_host = id === game_state.host_id;
         const is_you = id === CURRENT_PLAYER_ID;
@@ -81,12 +80,12 @@ function update_players(game_state: WaitingGameState) {
         html += `
             <div class="player-item ${is_you ? 'you' : ''} ${is_host ? 'host' : ''}">
                 <div class="player-name">
-                    ${player.name}
+                    ${state.name}
                     ${is_you ? '<span class="player-badge you">You</span>' : ''}
                     ${is_host ? '<span class="player-badge host">Host</span>' : ''}
-                    ${!player.is_connected ? '<span class="player-badge disconnected">OFFLINE</span>' : ''}
+                    ${!state.is_connected ? '<span class="player-badge disconnected">OFFLINE</span>' : ''}
                 </div>
-                <div class="player-status">${!player.is_connected ? '⌛ Wait' : 'Ready ✅'}</div>
+                <div class="player-status">${!state.is_connected ? '⌛ Wait' : 'Ready ✅'}</div>
             </div>
         `;
     }

@@ -26,6 +26,14 @@ export default class SocketClient {
         this.#io.emit("action", action);
     }
 
+    trading_check(value: boolean) {
+        this.#io.emit("trading_check", value);
+    }
+
+    dice_roll() {
+        this.#io.emit("dice_roll");
+    }
+
     #on_update(game_state: GameState) {
         console.log("🔄 update recieved", game_state);
 
