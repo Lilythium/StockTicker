@@ -23,7 +23,7 @@ export default class Player {
         this.#id = id;
         this.#game = game;
         this.#name = name;
-        this.#cash = game.settings().starting_cash;
+        this.#cash = game.settings.starting_cash;
     }
 
     id(): PlayerId {
@@ -39,7 +39,7 @@ export default class Player {
     }
 
     start() {
-        this.#cash = this.#game.settings().starting_cash;
+        this.#cash = this.#game.settings.starting_cash;
     }
 
     is_done(): boolean {

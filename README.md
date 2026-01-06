@@ -1,5 +1,5 @@
 # Buid
-npm i
+npm i #install packages
 npm run build
 
 # Run

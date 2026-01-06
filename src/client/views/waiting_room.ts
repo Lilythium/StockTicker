@@ -1,19 +1,20 @@
-import { ORIGIN, GAME_ID, CURRENT_PLAYER_ID } from "../params.js";
+import { CURRENT_PLAYER_ID } from "../params.js";
 import {
-    DEFAULT_SETTINGS,
-    GameSettings,
     GameState,
     MAX_PLAYERS,
-    PlayerId,
     WaitingGameState
 } from "../../interface/index.js";
 import SocketClient from "../socket_client.js";
 
-const settings: GameSettings = DEFAULT_SETTINGS;
-const game_link = document.getElementById("gameLink") as HTMLInputElement;
-const copy_button = document.getElementById("copyButton") as HTMLButtonElement;
+import "../components/share-link.js";
+import "../components/player-item.js";
+import "../components/host-sidebar.js";
+import PlayerItem from "../components/player-item.js";
+import HostSidebar from "../components/host-sidebar.js";
+
 const player_list = document.getElementById("playerList") as HTMLDivElement;
 const start_game_button = document.getElementById("startGameBtn") as HTMLButtonElement;
+const player_count = document.getElementById("playerCount") as HTMLSpanElement;
 const socket_client = new SocketClient("waiting", io => {
     io.on("update", (game_state: GameState) => {
         // Collapse GameState to WaitingGameState
@@ -22,79 +23,37 @@ const socket_client = new SocketClient("waiting", io => {
     });
 });
 
-game_link.value = `${ORIGIN}/?game_id=${GAME_ID}`;
-
-copy_button.addEventListener("click", () => {
-    navigator.clipboard.writeText(game_link.value).then(() => {
-        copy_button.textContent = 'Copied!';
-        copy_button.style.background = '#27ae60';
-        
-        setTimeout(() => {
-            copy_button.textContent = 'Copy';
-            copy_button.style.background = '';
-        }, 2000);
-    });
-});
-
 start_game_button.addEventListener("click", () => {
-    socket_client.start_game();
-});
-
-(document.getElementById('range_max_rounds') as HTMLInputElement).addEventListener('input', (e) => {
-    const target = e.target as HTMLInputElement;
-    settings.max_rounds = parseInt(target.value);
-    document.getElementById('val_rounds')!.textContent = target.value;
-});
-
-(document.getElementById('range_trading_duration') as HTMLInputElement).addEventListener('input', (e) => {
-    const target = e.target as HTMLInputElement;
-    settings.trading_duration = parseInt(target.value);
-    document.getElementById('val_trading')!.textContent = target.value;
-});
-
-(document.getElementById('range_dice_duration') as HTMLInputElement).addEventListener('input', (e) => {
-    const target = e.target as HTMLInputElement;
-    settings.dice_duration = parseInt(target.value);
-    document.getElementById('val_dice')!.textContent = target.value;
-});
-
-(document.getElementById('range_starting_cash') as HTMLInputElement).addEventListener('input', (e) => {
-    const target = e.target as HTMLInputElement;
-    settings.starting_cash = parseInt(target.value);
-    document.getElementById('val_cash')!.textContent = '$' + parseInt(target.value).toLocaleString();
+    const host_sidebar = document.getElementById("hostSidebarComponent") as HostSidebar;
+    socket_client.start_game(host_sidebar.settings);
 });
 
 function update_players(game_state: WaitingGameState) {
+    player_count.innerText = `${game_state.players.length}/${MAX_PLAYERS}`;
+    
+    const players = game_state.players;
+    player_list.innerHTML = ``;
     let active_players = 0;
-    let html = "";
     let i = 0;
 
-    const players = game_state.players;
     for (i; i < players.length; i++) {
         const [id, state] = players[i];
         if (state.is_connected) active_players++;
 
-        const is_host = id === game_state.host_id;
-        const is_you = id === CURRENT_PLAYER_ID;
-
-        html += `
-            <div class="player-item ${is_you ? 'you' : ''} ${is_host ? 'host' : ''}">
-                <div class="player-name">
-                    ${state.name}
-                    ${is_you ? '<span class="player-badge you">You</span>' : ''}
-                    ${is_host ? '<span class="player-badge host">Host</span>' : ''}
-                    ${!state.is_connected ? '<span class="player-badge disconnected">OFFLINE</span>' : ''}
-                </div>
-                <div class="player-status">${!state.is_connected ? '⌛ Wait' : 'Ready ✅'}</div>
-            </div>
-        `;
+        const item = document.createElement("player-item") as PlayerItem;
+        item.name = state.name;
+        item.you = id === CURRENT_PLAYER_ID;
+        item.host = id === game_state.host_id;
+        item.connected = state.is_connected;
+        player_list.appendChild(item);
     }
 
     for(i; i < MAX_PLAYERS; i++) {
-        html += '<div class="empty-slot">Waiting for player...</div>';
+        const item = document.createElement("player-item") as PlayerItem;
+        item.empty = true;
+        player_list.appendChild(item);
     }
 
-    player_list.innerHTML = html;
     const can_start = active_players >= 2;
     start_game_button.disabled = !can_start;
     start_game_button.textContent = can_start ? 'Start Game' : '⛔ Need 2+ Players';

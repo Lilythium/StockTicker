@@ -5,6 +5,7 @@ import { Game } from "./game.js";
 import Player from "./player.js";
 import {
     GameId,
+    GameSettings,
     PlayerAction,
     PlayerId,
     PlayerToken
@@ -91,7 +92,7 @@ export default class GameManager {
 
         socket.join(game.id());
         socket.on("disconnect", () => this.#on_disconnect(socket));
-        socket.on("start_game", () => this.#on_start_game(socket));
+        socket.on("start_game", settings => this.#on_start_game(socket, settings));
         socket.on("action", action => this.#on_action(socket, action));
         socket.on("trading_check", value => this.#on_trading_check(socket, value));
 
@@ -109,12 +110,13 @@ export default class GameManager {
         this.post_game_update(player.game().id());
     }
 
-    #on_start_game(socket: Socket) {
+    #on_start_game(socket: Socket, settings: GameSettings) {
         const player_token = socket.data.player_token as PlayerToken;
         const player = this.get_player(player_token);
         if (player === undefined) return;
 
         const game = player.game();
+        game.settings = settings;
         if(!game.start(player.id())) return;
         console.log(`🕹️ Game '${game.id()}' started`)
         this.post_game_update(game.id());

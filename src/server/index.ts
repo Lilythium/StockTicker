@@ -13,7 +13,7 @@ const game_manager = new GameManager(server);
 app.set("view engine", "pug");
 app.set("views", "views");
 
-// Routes for static assets
+// Routes for static assets and client code
 app.use(express.static("assets"));
 app.use("/js/client", express.static("dist/client"));
 app.use("/js/interface", express.static("dist/interface"));
@@ -44,7 +44,6 @@ app.get("/", (req, res) => {
             res.render("waiting_room", {
                 game_id,
                 is_host: game.is_host(player.id()),
-                settings: game.settings()
             });
             break;
         case "active":

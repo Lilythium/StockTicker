@@ -19,7 +19,7 @@ import {
 export class Game {
     #id: GameId;
     #status: GameStatus = "waiting";
-    #settings: GameSettings = DEFAULT_SETTINGS;
+    settings: GameSettings = DEFAULT_SETTINGS;
     #phase: GamePhase = "trading";
     #round: number = 1;
     #prices: StockPrices = {
@@ -40,10 +40,6 @@ export class Game {
 
     id(): GameId {
         return this.#id;
-    }
-
-    settings(): GameSettings {
-        return this.#settings;
     }
 
     status(): GameStatus {
@@ -175,7 +171,7 @@ export class Game {
             };
             case "active": return {
                 status: "active",
-                settings: this.#settings,
+                settings: this.settings,
                 phase: this.#phase,
                 round: this.#round,
                 players,

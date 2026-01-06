@@ -1,7 +1,8 @@
 import {
     GameStatus,
     GameState,
-    PlayerAction
+    PlayerAction,
+    GameSettings
 } from "../interface/index.js";
 
 declare const io: (...args: any[]) => any;
@@ -18,8 +19,8 @@ export default class SocketClient {
         callback(this.#io);
     }
 
-    start_game() {
-        this.#io.emit("start_game");
+    start_game(settings: GameSettings) {
+        this.#io.emit("start_game", settings);
     }
 
     submit_action(action: PlayerAction) {

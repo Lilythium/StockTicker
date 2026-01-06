@@ -13,18 +13,10 @@ block main
                 .game-id-label Game ID
                 .game-id-value #{game_id}
             
-            .share-link
-                p <strong>📋 Share this link with friends:</strong>
-                    .copy-link
-                        input(
-                            type="text"
-                            id="gameLink"
-                            readonly
-                        )
-                        button#copyButton.copy-button Copy
+            share-link
             
             .players-waiting
-                h2 👥 Players (<span id="playerCount">0</span>/4)
+                h2 👥 Players (<span id="playerCount">0/4</span>)
                 #playerList.player-list
                     .empty-slot Connecting...
 
@@ -41,44 +33,4 @@ block main
                 button#leaveBtn.btn-leave Leave Game
             
         if is_host
-            aside#hostSidebar.host-sidebar
-                .sidebar-header
-                    h3 ⚙️ GAME SETTINGS
-
-                .setting-group
-                    label Max Rounds: <span id="val_rounds">15</span>
-                    input#range_max_rounds.retro-slider(
-                        type="range"
-                        min="1"
-                        max="50"
-                        value="15"
-                    )
-                
-                .setting-group
-                    label Trading Timer: <span id="val_trading">2</span> min</label>
-                    input#range_trading_duration.retro-slider(
-                        type="range"
-                        min="1"
-                        max="10" value="2"
-                    )
-
-                .setting-group
-                    label Dice Timer: <span id="val_dice">15</span> sec
-                    input#range_dice_duration.retro-slider(
-                        type="range"
-                        min="0"
-                        max="30"
-                        value="10"
-                    )
-
-                .setting-group
-                    label Starting Cash: <span id="val_cash">$5000</span>
-                    input#range_starting_cash.retro-slider(
-                        type="range"
-                        min="500"
-                        max="20000"
-                        step="500"
-                        value="5000"
-                    )
-
-                button#resetBtnclass.btn-reset ↻ Reset Defaults
+            host-sidebar#hostSidebarComponent
