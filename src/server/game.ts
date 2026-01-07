@@ -126,7 +126,7 @@ export class Game {
                         break;
 
                     case "sell":
-                        succeeded = player.buy(
+                        succeeded = player.sell(
                             action.stock,
                             action.shares,
                             this.#prices[action.stock]
