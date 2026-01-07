@@ -35,7 +35,7 @@ export default class LobbyView extends LitElement {
                         <div class="form-group">
                             <label for="player_name">Name</label>
                             <input type="text"
-                                   id="player_name"
+                                   name="player_name"
                                    placeholder="TYPE NAME HERE..."
                                    required
                                    maxlength="20"
