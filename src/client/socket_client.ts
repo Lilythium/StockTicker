@@ -4,7 +4,7 @@ import {
     GameState,
     PlayerAction,
     GameSettings
-} from "../interface/index.js";
+} from "../common/index.js";
 
 export default class SocketClient {
     #io: Socket;

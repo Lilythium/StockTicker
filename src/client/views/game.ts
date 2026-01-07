@@ -4,7 +4,7 @@ import {
     GameState,
     PlayerId,
     Stock,
-} from "../../interface/index.js";
+} from "../../common/index.js";
 import { CURRENT_PLAYER_ID, format_money } from "../params.js";
 
 import "../components/game-header.js";

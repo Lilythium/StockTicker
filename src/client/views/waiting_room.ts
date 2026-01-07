@@ -3,7 +3,7 @@ import {
     GameState,
     MAX_PLAYERS,
     WaitingGameState
-} from "../../interface/index.js";
+} from "../../common/index.js";
 import SocketClient from "../socket_client.js";
 
 import "../components/share-link.js";

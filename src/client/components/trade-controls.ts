@@ -1,4 +1,4 @@
-import { PlayerAction, Stock, StockPrices } from "../../interface/index.js";
+import { PlayerAction, Stock, StockPrices } from "../../common/index.js";
 import { format_money } from "../params.js";
 
 declare global {

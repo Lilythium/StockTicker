@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, GameSettings } from "../../interface/index.js";
+import { DEFAULT_SETTINGS, GameSettings } from "../../common/index.js";
 import { format_money } from "../params.js";
 
 export default class HostSidebar extends HTMLElement {

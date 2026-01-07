@@ -1,4 +1,4 @@
-import { Stock, StockPrices } from "../../interface";
+import { Stock, StockPrices } from "../../common";
 
 export default class StockChart extends HTMLElement {
     #prices: StockPrices | undefined;

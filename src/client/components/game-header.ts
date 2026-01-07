@@ -1,4 +1,4 @@
-import { ActiveGameState, PlayerId } from "../../interface/index.js";
+import { ActiveGameState, PlayerId } from "../../common/index.js";
 import { CURRENT_PLAYER_ID, GAME_ID } from "../params.js";
 
 export default class GameHeader extends HTMLElement {

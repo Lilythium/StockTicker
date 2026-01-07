@@ -1,5 +1,5 @@
 import { Game } from "./game.js";
-import { PlayerId, PlayerState, Portfolio, Stock } from "../interface//index.js";
+import { PlayerId, PlayerState, Portfolio, Stock } from "../common/index.js";
 
 export default class Player {
     #id: PlayerId;

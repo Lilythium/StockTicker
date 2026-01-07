@@ -14,7 +14,7 @@ import {
     StockPrices,
     PlayerAction,
     PlayerEvent,
-} from "../interface/index.js";
+} from "../common/index.js";
 
 export class Game {
     #id: GameId;

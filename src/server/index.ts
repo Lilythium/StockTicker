@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import http from "http";
 import GameManager from "./game_manager.js";
-import { PlayerToken } from "../interface/index.js";
+import { PlayerToken } from "../common/index.js";
 
 // Create server
 const app = express();

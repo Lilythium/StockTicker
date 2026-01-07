@@ -9,7 +9,7 @@ import {
     PlayerAction,
     PlayerId,
     PlayerToken
-} from "../interface/index.js";
+} from "../common/index.js";
 
 export default class GameManager {
     #io: Server;
