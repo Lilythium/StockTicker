@@ -102,43 +102,6 @@ body {
     border-bottom: 2px solid var(--ink-black);
 }
 
-.player-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding: 15px 20px;
-    background: white;
-    border: 2px solid var(--ink-black);
-    font-family: var(--ticker-font);
-}
-
-.player-item.you { border: 3px solid var(--action-green); }
-.player-item.host { border-left: 15px solid var(--action-gold); }
-.player-name { font-size: 20px; font-weight: bold; }
-
-.player-badge {
-    margin-left: 8px;
-    padding: 2px 10px;
-    font-size: 11px;
-    text-transform: uppercase;
-    border-radius: 15px;
-    border: 1px solid var(--ink-black);
-}
-.player-badge.you { background: var(--action-green); color: white; }
-.player-badge.host { background: var(--action-gold); color: var(--ink-black); }
-.player-badge.disconnected { background: #e74c3c; color: white; font-weight: bold; }
-
-.empty-slot {
-    margin-bottom: 10px;
-    padding: 15px;
-    background: rgba(0,0,0,0.05);
-    border: 2px dashed #bdc3c7;
-    text-align: center;
-    color: #95a5a6;
-    font-family: var(--ticker-font);
-}
-
 /* ===== STATUS & COPY LINK ===== */
 .status-message {
     margin: 20px 0;

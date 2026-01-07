@@ -1,64 +1,82 @@
-export default class PlayerItem extends HTMLElement {
-    constructor() {
-        super();
-    }
+import {css, html, LitElement} from 'lit';
+import {customElement, property} from 'lit/decorators.js';
 
-    static get observedAttributes() {
-        return ["empty", "name", "you", "host", "connected"];
-    }
+@customElement("player-item")
+export default class PlayerItem extends LitElement {
+    @property({type: Boolean})
+    empty = false;
 
-    set empty(value: boolean) {
-        this.toggleAttribute("empty", value);
-    }
+    @property()
+    name = "Unknown";
 
-    set name(value: string) {
-        this.setAttribute("name", value);
-    }
+    @property({type: Boolean})
+    you = false;
 
-    set you(value: boolean) {
-        this.toggleAttribute("you", value);
-    }
+    @property({type: Boolean})
+    host = false;
 
-    set host(value: boolean) {
-        this.toggleAttribute("host", value);
-    }
+    @property({type: Boolean})
+    connected = false;
 
-    set connected(value: boolean) {
-        this.toggleAttribute("connected", value);
-    }
-
-    attributesChangedCallback() {
-        this.render();
-    }
-
-    connectedCallback() {
-        this.render();
-    }
-
-    private render() {
-        const is_empty = this.hasAttribute("empty");
-        const name = this.getAttribute("name") ?? "Unknown";
-        const is_you = this.hasAttribute("you");
-        const is_host = this.hasAttribute("host");
-        const is_connected = this.hasAttribute("connected");
-
-        if (is_empty) {
-            this.innerHTML = `<div class="empty-slot">Waiting for player...</div>`;
-            return;
+    static styles = css`
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 15px 20px;
+            background: white;
+            border: 2px solid var(--ink-black);
+            font-family: var(--ticker-font);
         }
 
-        this.innerHTML = `
-            <div class="player-item ${is_you ? 'you' : ''} ${is_host ? 'host' : ''}">
+        .player-item.you { border: 3px solid var(--action-green); }
+        .player-item.host { border-left: 15px solid var(--action-gold); }
+        .player-name {
+            font-family: var(--retro-font);
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .player-badge {
+            margin-left: 8px;
+            padding: 2px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-radius: 15px;
+            border: 1px solid var(--ink-black);
+        }
+        .player-badge.you { background: var(--action-green); color: white; }
+        .player-badge.host { background: var(--action-gold); color: var(--ink-black); }
+        .player-badge.disconnected { background: #e74c3c; color: white; font-weight: bold; }
+
+        .empty-slot {
+            margin-bottom: 10px;
+            padding: 15px;
+            background: rgba(0,0,0,0.05);
+            border: 2px dashed #bdc3c7;
+            text-align: center;
+            color: #95a5a6;
+            font-family: var(--ticker-font);
+        }
+    `;
+
+    render() {
+        if (this.empty) {
+            return html`<div class="empty-slot">Waiting for player...</div>`;
+        }
+
+        return html`
+            <div class="player-item ${this.you ? 'you' : ''} ${this.host ? 'host' : ''}">
                 <div class="player-name">
-                    ${name}
-                    ${is_you ? '<span class="player-badge you">You</span>' : ''}
-                    ${is_host ? '<span class="player-badge host">Host</span>' : ''}
-                    ${!is_connected ? '<span class="player-badge disconnected">OFFLINE</span>' : ''}
+                    ${this.name}
+                    ${this.you ? html`<span class="player-badge you">You</span>` : html``}
+                    ${this.host ? html`<span class="player-badge host">Host</span>` : ``}
+                    ${!this.connected ? html`<span class="player-badge disconnected">OFFLINE</span>` : ``}
                 </div>
-                <div class="player-status">${!is_connected ? '⌛ Wait' : 'Ready ✅'}</div>
+                <div class="player-status">${!this.connected ? '⌛ Wait' : 'Ready ✅'}</div>
             </div>
         `;
     }
 }
-
-customElements.define("player-item", PlayerItem);
