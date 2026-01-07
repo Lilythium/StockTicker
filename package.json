@@ -33,6 +33,7 @@
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "lit": "^3.3.2",
     "pug": "^3.0.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3"
