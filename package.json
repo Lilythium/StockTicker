@@ -26,7 +26,7 @@
   "type": "module",
   "main": "dist/server/index.js",
   "scripts": {
-    "build": "npx tsc",
+    "build": "npx tsc && node esbuild.js",
     "start": "node dist/server/index.js"
   },
   "dependencies": {
@@ -34,13 +34,15 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "pug": "^3.0.3",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/cookie": "^0.6.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.3",
+    "esbuild": "^0.27.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

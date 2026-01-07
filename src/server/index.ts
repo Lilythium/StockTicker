@@ -15,8 +15,7 @@ app.set("views", "views");
 
 // Routes for static assets and client code
 app.use(express.static("assets"));
-app.use("/js/client", express.static("dist/client"));
-app.use("/js/interface", express.static("dist/interface"));
+app.use("/js", express.static("dist/client"));
 
 // Parse url encoded form data and cookies
 app.use(express.urlencoded({ extended: true }));

@@ -1,3 +1,4 @@
+import { io, Socket } from "socket.io-client";
 import {
     GameStatus,
     GameState,
@@ -5,13 +6,11 @@ import {
     GameSettings
 } from "../interface/index.js";
 
-declare const io: (...args: any[]) => any;
-
 export default class SocketClient {
-    #io: any;
+    #io: Socket;
     #current_status: GameStatus;
 
-    constructor(current_status: GameStatus, callback: (io: any) => void) {
+    constructor(current_status: GameStatus, callback: (io: Socket) => void) {
         this.#io = io();
         this.#current_status = current_status;
 
