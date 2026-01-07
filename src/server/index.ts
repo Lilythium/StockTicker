@@ -33,17 +33,14 @@ app.get("/", (req, res) => {
     let player_token = req.cookies.player_token as PlayerToken;
     let player = game_manager.get_player(player_token);
     if (player === undefined || player.game().id() !== game_id) {
-        res.render("lobby", { game_id });
+        res.render("lobby");
         return;
     }
 
     const game = player.game();
     switch(player.game().status()) {
         case "waiting":
-            res.render("waiting_room", {
-                game_id,
-                is_host: game.is_host(player.id()),
-            });
+            res.render("waiting_room");
             break;
         case "active":
             res.render("game", {

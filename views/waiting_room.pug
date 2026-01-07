@@ -4,33 +4,4 @@ block head
     script(type="module" src="/js/waiting_room.js" defer)
 
 block main
-    .page-wrapper
-        .waiting-container 
-            .game-info 
-                h1 Waiting Room
-
-            .game-id-display 
-                .game-id-label Game ID
-                .game-id-value #{game_id}
-            
-            share-link
-            
-            .players-waiting
-                h2 👥 Players (<span id="playerCount">0/4</span>)
-                #playerList.player-list
-                    .empty-slot Connecting...
-
-            if is_host
-                #hostControls
-                    button#startGameBtn.start-button(disabled) ⛔ Need 2+ Players
-
-            if !is_host
-                #waitingMessage(
-                    style="text-align: center; padding: 20px;"
-                ) ⏳ Waiting for host to start the game...
-
-            .action-buttons(style="margin-top: 20px; text-align: center;")
-                button#leaveBtn.btn-leave Leave Game
-            
-        if is_host
-            host-sidebar#hostSidebarComponent
+    waiting-room-view
