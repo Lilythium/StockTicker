@@ -8,10 +8,10 @@ import {
 import { CURRENT_PLAYER_ID, format_money } from "../params.js";
 
 import "../components/game-header.js";
-import "../components/trade-controls.js";
+import "../components/trade-controls/index.js";
 import "../components/stock-chart.js";
 import GameHeader from "../components/game-header.js";
-import TradeControls from "../components/trade-controls.js";
+import TradeControls from "../components/trade-controls/index.js";
 import StockChart from "../components/stock-chart.js";
 
 const trade_controls = document.getElementById("tradeControls") as TradeControls;
