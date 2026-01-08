@@ -25,7 +25,8 @@ export type GameEvent = {
     player: PlayerId,
     stock: Stock,
     movement: StockMovement,
-    amount: number
+    amount: number,
+    success: boolean
 };
 
 export type History = {

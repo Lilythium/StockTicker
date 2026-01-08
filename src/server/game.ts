@@ -173,6 +173,7 @@ export class Game {
         const amounts = [5, 10, 20];
         const amount = amounts[Math.floor(Math.random() * amounts.length)];
 
+        let success = true;
         switch (movement) {
             case "up":
                 this.#prices[stock] += amount;
@@ -181,6 +182,10 @@ export class Game {
                 this.#prices[stock] -= amount;
                 break;
             case "dividend":
+                if (this.#prices[stock] < PAR_PRICE) {
+                    success = false;
+                    break;
+                }
                 for (const [_, player] of this.#players) {
                     player.dividends(stock, amount);
                 }
@@ -194,7 +199,8 @@ export class Game {
             player: player_id,
             stock,
             movement,
-            amount
+            amount,
+            success
         };
 
         this.#event_history.push(event);
