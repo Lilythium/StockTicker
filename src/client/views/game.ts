@@ -73,6 +73,10 @@ done_trading_checkbox.addEventListener("change", () => {
     socket_client.trading_check(done_trading_checkbox.checked);
 });
 
+roll_button.addEventListener("click", () => {
+    socket_client.submit_action({ kind: "roll" });
+});
+
 function update_players(state: ActiveGameState) {
     const player_container = document.getElementById('playersContainer') as HTMLDivElement;
     

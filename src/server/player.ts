@@ -87,6 +87,15 @@ export default class Player {
         return true;
     }
 
+    /**
+     * Collect dividends
+     * @param stock 
+     * @param amount 
+     */
+    dividends(stock: Stock, amount: number) {
+        this.#cash += this.#portfolio[stock] * amount;
+    }
+
     set_done(value: boolean) {
         this.#done_turn = value;
     }

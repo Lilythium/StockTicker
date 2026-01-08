@@ -13,7 +13,8 @@ import {
     Stock,
     StockPrices,
     PlayerAction,
-    PlayerEvent,
+    StockMovement,
+    GameEvent,
 } from "../common/index.js";
 
 export class Game {
@@ -32,7 +33,7 @@ export class Game {
     } as StockPrices;
     #players = new Map<PlayerId, Player>();
     #host_id: PlayerId | undefined;
-    #event_history: PlayerEvent[] = [];
+    #event_history: GameEvent[] = [];
 
     constructor(id: GameId) {
         this.#id = id;
@@ -134,11 +135,76 @@ export class Game {
                         break;
                 }
 
-                if (succeeded) this.#event_history.push({ player: player_id, action });
+                if (succeeded) this.#event_history.push({
+                    kind: "trade",
+                    player: player_id,
+                    stock: action.stock,
+                    direction: action.direction,
+                    shares: action.shares
+                });
                 return succeeded;
             
             case "roll":
-                return false
+                if (this.#phase !== "dice") return false;
+
+                let current_player!: Player;
+                for (const [_, player] of this.#players) {
+                    if (!player.is_done()) {
+                        current_player = player;
+                        break;
+                    }
+                }
+
+                if (player_id !== current_player.id()) return false;
+
+                const stocks = Object.keys(this.#prices);
+                const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
+
+                const movements: StockMovement[] = ["up", "down", "dividend"];
+                const movement = movements[Math.floor(Math.random() * movements.length)];
+
+                const amounts = [5, 10, 20];
+                const amount = amounts[Math.floor(Math.random() * amounts.length)];
+
+                switch (movement) {
+                    case "up":
+                        this.#prices[stock] += amount;
+                        break;
+                    case "down":
+                        this.#prices[stock] -= amount;
+                        break;
+                    case "dividend":
+                        for (const [_, player] of this.#players) {
+                            player.dividends(stock, amount);
+                        }
+                        break;
+                }
+
+                current_player.set_done(true);
+
+                const event: GameEvent = {
+                    kind: "roll",
+                    player: player_id,
+                    stock,
+                    movement,
+                    amount
+                };
+
+                this.#event_history.push(event);
+
+                let all_done = true;
+                for (const [_, player] of this.#players) {
+                    if (!player.is_done()) {
+                        all_done = false;
+                        break;
+                    }
+                }
+
+                if (all_done) {
+                    this.end_phase();
+                }
+                
+                return true
         }
     }
 
@@ -149,6 +215,7 @@ export class Game {
                 break;
             case "dice":
                 this.#phase = "trading";
+                this.#round += 1;
                 break;
         }
 

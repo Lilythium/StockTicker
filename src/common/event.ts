@@ -9,12 +9,23 @@ export type PlayerAction = {
     kind: "roll"
 };
 
-export type PlayerEvent = {
+export type StockMovement = "up" | "down" | "dividend";
+
+export type GameEvent = {
+    kind: "trade",
     player: PlayerId,
-    action: PlayerAction
+    stock: Stock,
+    shares: number,
+    direction: "buy" | "sell"
+} | {
+    kind: "roll",
+    player: PlayerId,
+    stock: Stock,
+    movement: StockMovement,
+    amount: number
 };
 
 export type History = {
-    events: PlayerEvent[],
+    events: GameEvent[],
     net_worth: Record<PlayerId, number>[]
 };
