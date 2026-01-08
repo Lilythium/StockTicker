@@ -15,6 +15,7 @@ import {
     PlayerAction,
     StockMovement,
     GameEvent,
+    TradePlayerAction,
 } from "../common/index.js";
 
 export class Game {
@@ -108,104 +109,109 @@ export class Game {
      * @param player_id
      * @returns if the action was processed
      */
-    process_action(action: PlayerAction, player_id: PlayerId): boolean {
+    process_action(player_id: PlayerId, action: PlayerAction): boolean {
         switch (action.kind) {
-            case "trade":
-                if (this.#phase !== "trading") return false;
-
-                const player = this.#players.get(player_id);
-                if (player == null) return false;
-
-                let succeeded = false;
-                switch (action.direction) {
-                    case "buy":
-                        succeeded = player.buy(
-                            action.stock,
-                            action.shares,
-                            this.#prices[action.stock]
-                        );
-                        break;
-
-                    case "sell":
-                        succeeded = player.sell(
-                            action.stock,
-                            action.shares,
-                            this.#prices[action.stock]
-                        );
-                        break;
-                }
-
-                if (succeeded) this.#event_history.push({
-                    kind: "trade",
-                    player: player_id,
-                    stock: action.stock,
-                    direction: action.direction,
-                    shares: action.shares
-                });
-                return succeeded;
-            
-            case "roll":
-                if (this.#phase !== "dice") return false;
-
-                let current_player!: Player;
-                for (const [_, player] of this.#players) {
-                    if (!player.is_done()) {
-                        current_player = player;
-                        break;
-                    }
-                }
-
-                if (player_id !== current_player.id()) return false;
-
-                const stocks = Object.keys(this.#prices);
-                const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
-
-                const movements: StockMovement[] = ["up", "down", "dividend"];
-                const movement = movements[Math.floor(Math.random() * movements.length)];
-
-                const amounts = [5, 10, 20];
-                const amount = amounts[Math.floor(Math.random() * amounts.length)];
-
-                switch (movement) {
-                    case "up":
-                        this.#prices[stock] += amount;
-                        break;
-                    case "down":
-                        this.#prices[stock] -= amount;
-                        break;
-                    case "dividend":
-                        for (const [_, player] of this.#players) {
-                            player.dividends(stock, amount);
-                        }
-                        break;
-                }
-
-                current_player.set_done(true);
-
-                const event: GameEvent = {
-                    kind: "roll",
-                    player: player_id,
-                    stock,
-                    movement,
-                    amount
-                };
-
-                this.#event_history.push(event);
-
-                let all_done = true;
-                for (const [_, player] of this.#players) {
-                    if (!player.is_done()) {
-                        all_done = false;
-                        break;
-                    }
-                }
-
-                if (all_done) {
-                    this.end_phase();
-                }
-                
-                return true
+            case "trade": return this.process_trade(player_id, action);
+            case "roll": return this.process_roll(player_id);
         }
+    }
+
+    process_trade(player_id: PlayerId, trade: TradePlayerAction): boolean {
+        if (this.#phase !== "trading") return false;
+
+        const player = this.#players.get(player_id);
+        if (player == null) return false;
+
+        let succeeded = false;
+        switch (trade.direction) {
+            case "buy":
+                succeeded = player.buy(
+                    trade.stock,
+                    trade.shares,
+                    this.#prices[trade.stock]
+                );
+                break;
+
+            case "sell":
+                succeeded = player.sell(
+                    trade.stock,
+                    trade.shares,
+                    this.#prices[trade.stock]
+                );
+                break;
+        }
+
+        if (succeeded) this.#event_history.push({
+            kind: "trade",
+            player: player_id,
+            stock: trade.stock,
+            direction: trade.direction,
+            shares: trade.shares
+        });
+        return succeeded;
+    }
+
+    process_roll(player_id: PlayerId): boolean {
+        if (this.#phase !== "dice") return false;
+
+        let current_player!: Player;
+        for (const [_, player] of this.#players) {
+            if (!player.is_done()) {
+                current_player = player;
+                break;
+            }
+        }
+
+        if (player_id !== current_player.id()) return false;
+
+        const stocks = Object.keys(this.#prices);
+        const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
+
+        const movements: StockMovement[] = ["up", "down", "dividend"];
+        const movement = movements[Math.floor(Math.random() * movements.length)];
+
+        const amounts = [5, 10, 20];
+        const amount = amounts[Math.floor(Math.random() * amounts.length)];
+
+        switch (movement) {
+            case "up":
+                this.#prices[stock] += amount;
+                break;
+            case "down":
+                this.#prices[stock] -= amount;
+                break;
+            case "dividend":
+                for (const [_, player] of this.#players) {
+                    player.dividends(stock, amount);
+                }
+                break;                    
+        }
+
+        current_player.set_done(true);
+
+        const event: GameEvent = {
+            kind: "roll",
+            player: player_id,
+            stock,
+            movement,
+            amount
+        };
+
+        this.#event_history.push(event);
+
+        let all_done = true;
+        for (const [_, player] of this.#players) {
+            if (!player.is_done()) {
+                all_done = false;
+                break;
+            }
+        }
+
+        if (all_done) {
+            this.end_phase();
+        }
+        
+        return true
     }
 
     end_phase() {

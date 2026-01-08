@@ -9,6 +9,9 @@ export type PlayerAction = {
     kind: "roll"
 };
 
+export type TradePlayerAction = Extract<PlayerAction, { kind: "trade" }>;
+export type RollPlayerAction = Extract<PlayerAction, { kind: "roll" }>;
+
 export type StockMovement = "up" | "down" | "dividend";
 
 export type GameEvent = {
