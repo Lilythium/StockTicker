@@ -31,7 +31,6 @@ export type GameState = {
     round: number,
     players: [PlayerId, PlayerState][],
     prices: StockPrices,
-    history: History // TODO: Pass history to client separately?
 } | {
     status: "finished"
 };

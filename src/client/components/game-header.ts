@@ -1,79 +1,68 @@
+import {css, html, LitElement} from 'lit';
+import {customElement, property, state} from 'lit/decorators.js';
 import { ActiveGameState, PlayerId } from "../../common/index.js";
 import { CURRENT_PLAYER_ID, GAME_ID } from "../params.js";
 
-export default class GameHeader extends HTMLElement {
-    #name: string | undefined;
+@customElement("game-header")
+export default class GameHeader extends LitElement {
+    @property()
+    state: ActiveGameState | undefined;
 
-    constructor() {
-        super()
-    }
+    // use light dom
+    protected createRenderRoot(): HTMLElement | DocumentFragment { return this; }
 
-    update(state: ActiveGameState) {
-        const phase_label = document.querySelector('.phase-label');
-        if (phase_label) {
-            phase_label.className = `phase-label ${state.phase}`;
-            phase_label.textContent = state.phase === 'trading' ? '🔄 TRADING' : '🎲 DICE';
-        }
+    render() {
+        const name = (new Map(this.state?.players)).get(CURRENT_PLAYER_ID as PlayerId)?.name;
 
-        const player_status = document.querySelector('.players-status') as HTMLDivElement;
         let done_trading_count = 0;
         let online_count = 0;
-        for (const [_, player] of state.players) {
-            if (player.done_turn) done_trading_count++;
-            if (player.is_connected) online_count++;
-        }
-        if (state.phase === 'trading') {
-            player_status.textContent = `${done_trading_count}/${online_count} Ready`;
-            player_status.style.display = '';
-        } else {
-            player_status.style.display = 'none';
+        if(this.state) {
+            for (const [_, player] of this.state.players) {
+                if (player.done_turn) done_trading_count++;
+                if (player.is_connected) online_count++;
+            }
         }
 
         let player_turn_id: PlayerId | undefined;
-        for (const [id, player] of state.players) {
-            if (!player.done_turn) {
-                player_turn_id = id;
-                break;
+        if(this.state) {
+            for (const [id, player] of this.state.players) {
+                if (!player.done_turn) {
+                    player_turn_id = id;
+                    break;
+                }
             }
         }
         const is_my_turn = player_turn_id === CURRENT_PLAYER_ID;
 
-        const turn_status = document.querySelector('.turn-status') as HTMLDivElement;
-        if (state.phase === 'dice') {
-            turn_status.innerHTML = is_my_turn ? '<span class="your-turn-pulse">YOUR TURN</span>' : 'WAITING...';
-            turn_status.style.display = '';
-        } else {
-            turn_status.style.display = 'none';
-        }
-
-        const round_display = document.querySelector('.round-display');
-        if (round_display) {
-            round_display.textContent = `Round ${state.round || 1}/${state.settings.max_rounds || 15}`;
-        }
-    }
-
-    connectedCallback() {
-        this.render();
-    }
-
-    private render() {
-        this.innerHTML = `
+        return html`
             <div class="game-header">
                 <div class="header-unified-bar">
                     <div class="header-section identity">
                         <span class="game-id">ID: ${GAME_ID}</span>
-                        <span class="player-name-display">${this.#name}</span>
+                        <span class="player-name-display">${name}</span>
                     </div>
 
                     <div class="header-section phase-logic">
-                        <span class="phase-label trading">🔄 LOADING...</span>
+                        <span class="phase-label ${this.state?.phase ?? ""}">
+                            ${this.state?.phase === 'dice' ? '🎲 DICE' :'🔄 TRADING'}
+                        </span>
                         <div class="timer" id="timer">--:--</div>
-                        <div class="players-status">0/0</div>
-                        <div class="turn-status" style="display:none;">WAITING...</div>
+                        <div
+                            class="players-status"
+                            ?hidden=${this.state?.phase !== "trading"}
+                        >${done_trading_count}/${online_count} Ready</div>
+                        <div
+                            class="turn-status"
+                            ?hidden=${this.state?.phase !== "dice"}
+                        >
+                            ${is_my_turn ? '<span class="your-turn-pulse">YOUR TURN</span>' : 'WAITING...'}
+                        </div>
                     </div>
 
                     <div class="header-section progress-exit">
-                        <span class="round-display">Round 1/1</span>
+                        <span class="round-display">
+                            Round ${this.state?.round || 1}/${this.state?.settings.max_rounds || 15}
+                        </span>
                         <button id="leaveBtn" class="btn-leave">LEAVE</button>
                     </div>
                 </div>
@@ -81,5 +70,3 @@ export default class GameHeader extends HTMLElement {
         `;
     }
 }
-
-customElements.define("game-header", GameHeader);

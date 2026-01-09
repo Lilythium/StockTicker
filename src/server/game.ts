@@ -109,18 +109,18 @@ export class Game {
      * @param player_id
      * @returns if the action was processed
      */
-    process_action(player_id: PlayerId, action: PlayerAction): boolean {
+    process_action(player_id: PlayerId, action: PlayerAction): GameEvent | null {
         switch (action.kind) {
             case "trade": return this.process_trade(player_id, action);
             case "roll": return this.process_roll(player_id);
         }
     }
 
-    process_trade(player_id: PlayerId, trade: TradePlayerAction): boolean {
-        if (this.#phase !== "trading") return false;
+    process_trade(player_id: PlayerId, trade: TradePlayerAction): GameEvent | null {
+        if (this.#phase !== "trading") return null;
 
         const player = this.#players.get(player_id);
-        if (player == null) return false;
+        if (player == null) return null;
 
         let succeeded = false;
         switch (trade.direction) {
@@ -141,18 +141,20 @@ export class Game {
                 break;
         }
 
-        if (succeeded) this.#event_history.push({
+        const event: GameEvent = {
             kind: "trade",
             player: player_id,
             stock: trade.stock,
             direction: trade.direction,
             shares: trade.shares
-        });
-        return succeeded;
+        };
+
+        if (succeeded) this.#event_history.push(event);
+        return event;
     }
 
-    process_roll(player_id: PlayerId): boolean {
-        if (this.#phase !== "dice") return false;
+    process_roll(player_id: PlayerId): GameEvent | null {
+        if (this.#phase !== "dice") return null;
 
         let current_player!: Player;
         for (const [_, player] of this.#players) {
@@ -162,7 +164,7 @@ export class Game {
             }
         }
 
-        if (player_id !== current_player.id()) return false;
+        if (player_id !== current_player.id()) return null;
 
         const stocks = Object.keys(this.#prices);
         const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
@@ -217,7 +219,7 @@ export class Game {
             this.end_phase();
         }
         
-        return true
+        return event;
     }
 
     end_phase() {
@@ -254,11 +256,7 @@ export class Game {
                 phase: this.#phase,
                 round: this.#round,
                 players,
-                prices: this.#prices,
-                history: {
-                    events: this.#event_history,
-                    net_worth: []
-                }
+                prices: this.#prices
             }
             case "finished": return {
                 status: "finished"

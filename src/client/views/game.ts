@@ -1,6 +1,7 @@
 import SocketClient from "../socket_client.js";
 import {
     ActiveGameState,
+    GameEvent,
     GameState,
     PlayerId,
     Stock,
@@ -59,9 +60,14 @@ const socket_client = new SocketClient("active", io => {
         }
        
         trade_controls.prices = state.prices;
-        game_header.update(state);
+        game_header.state = state;
         stock_chart.prices = state.prices;
         update_players(state);
+    });
+    io.on("event", (event: GameEvent) => {
+        if (event.kind = "roll") {
+            console.log(event);
+        }
     });
 });
 
