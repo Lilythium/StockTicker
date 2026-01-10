@@ -1,3 +1,5 @@
+import { game_manager } from "./index.js";
+
 import Player from "./player.js";
 import {
     DEFAULT_SETTINGS,
@@ -23,6 +25,8 @@ export class Game {
     #status: GameStatus = "waiting";
     settings: GameSettings = DEFAULT_SETTINGS;
     #phase: GamePhase = "trading";
+    #phase_end?: Date;
+    #phase_timeout?: NodeJS.Timeout;
     #round: number = 1;
     #prices: StockPrices = {
         Gold: PAR_PRICE,
@@ -33,7 +37,7 @@ export class Game {
         Grain: PAR_PRICE
     } as StockPrices;
     #players = new Map<PlayerId, Player>();
-    #host_id: PlayerId | undefined;
+    #host_id?: PlayerId;
     #event_history: GameEvent[] = [];
 
     constructor(id: GameId) {
@@ -95,6 +99,9 @@ export class Game {
         }
         if (this.#status === "waiting") {
             this.#status = "active";
+            const trading_duration = this.settings.trading_duration * 60 * 1000;
+            this.#phase_end = new Date(Date.now() + trading_duration);
+            this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
             for (const [_, player] of this.#players) {
                 player.start();
             }
@@ -223,12 +230,20 @@ export class Game {
     }
 
     end_phase() {
+        clearTimeout(this.#phase_timeout);
+        this.#phase_timeout = undefined;
         switch (this.#phase) {
             case "trading":
                 this.#phase = "dice";
+                const dice_duration = this.settings.dice_duration * 1000;
+                this.#phase_end = new Date(Date.now() + dice_duration);
+                this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
                 break;
             case "dice":
                 this.#phase = "trading";
+                const trading_duration = this.settings.trading_duration * 60 * 1000;
+                this.#phase_end = new Date(Date.now() + trading_duration);
+                this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
                 this.#round += 1;
                 break;
         }
@@ -236,6 +251,8 @@ export class Game {
         for (const [_, player] of this.#players) {
             player.set_done(false);
         }
+
+        game_manager.post_game_update(this.#id);
     }
     
     state(): GameState {
@@ -254,6 +271,7 @@ export class Game {
                 status: "active",
                 settings: this.settings,
                 phase: this.#phase,
+                phase_end: this.#phase_end!,
                 round: this.#round,
                 players,
                 prices: this.#prices

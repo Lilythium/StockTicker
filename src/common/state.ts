@@ -28,6 +28,7 @@ export type GameState = {
     status: "active",
     settings: GameSettings, // TODO: Pass settings to client separately?
     phase: GamePhase,
+    phase_end: Date,
     round: number,
     players: [PlayerId, PlayerState][],
     prices: StockPrices,

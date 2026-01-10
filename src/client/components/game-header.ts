@@ -5,11 +5,26 @@ import { CURRENT_PLAYER_ID, GAME_ID } from "../params.js";
 
 @customElement("game-header")
 export default class GameHeader extends LitElement {
+    interval_id?: number;
+
     @property()
     state: ActiveGameState | undefined;
 
     // use light dom
     protected createRenderRoot(): HTMLElement | DocumentFragment { return this; }
+
+    // probably could be improved
+    connectedCallback() {
+        super.connectedCallback();
+        this.interval_id = window.setInterval(() => {
+            this.requestUpdate();
+        }, 1000);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        clearInterval(this.interval_id);
+    }
 
     render() {
         const name = (new Map(this.state?.players)).get(CURRENT_PLAYER_ID as PlayerId)?.name;
@@ -34,6 +49,10 @@ export default class GameHeader extends LitElement {
         }
         const is_my_turn = player_turn_id === CURRENT_PLAYER_ID;
 
+        const time_remaining = (new Date(this.state?.phase_end ?? Date.now()).getTime() ?? Date.now()) - Date.now();
+        const minutes = Math.floor((time_remaining / 1000) / 60).toString().padStart(2, '0');
+        const seconds = Math.floor((time_remaining / 1000) % 60).toString().padStart(2, '0');
+
         return html`
             <div class="game-header">
                 <div class="header-unified-bar">
@@ -46,7 +65,7 @@ export default class GameHeader extends LitElement {
                         <span class="phase-label ${this.state?.phase ?? ""}">
                             ${this.state?.phase === 'dice' ? '🎲 DICE' :'🔄 TRADING'}
                         </span>
-                        <div class="timer" id="timer">--:--</div>
+                        <div class="timer" id="timer">${minutes}:${seconds}</div>
                         <div
                             class="players-status"
                             ?hidden=${this.state?.phase !== "trading"}
@@ -55,7 +74,7 @@ export default class GameHeader extends LitElement {
                             class="turn-status"
                             ?hidden=${this.state?.phase !== "dice"}
                         >
-                            ${is_my_turn ? '<span class="your-turn-pulse">YOUR TURN</span>' : 'WAITING...'}
+                            ${is_my_turn ? html`<span class="your-turn-pulse">YOUR TURN</span>` : 'WAITING...'}
                         </div>
                     </div>
 

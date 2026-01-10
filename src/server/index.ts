@@ -7,7 +7,7 @@ import { PlayerToken } from "../common/index.js";
 // Create server
 const app = express();
 const server = http.createServer(app);
-const game_manager = new GameManager(server);
+export const game_manager = new GameManager(server);
 
 // Setup pug templating
 app.set("view engine", "pug");
