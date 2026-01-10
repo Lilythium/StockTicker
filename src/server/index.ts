@@ -26,27 +26,24 @@ app.get("/", (req, res) => {
     const { game_id } = req.query;
     
     if (game_id === undefined) {
-        res.render("lobby");
+        res.render("index", { view: "lobby-view" });
         return;
     }
 
     let player_token = req.cookies.player_token as PlayerToken;
     let player = game_manager.get_player(player_token);
     if (player === undefined || player.game().id() !== game_id) {
-        res.render("lobby");
+        res.render("index", { view: "lobby-view" });
         return;
     }
 
     const game = player.game();
     switch(player.game().status()) {
         case "waiting":
-            res.render("waiting_room");
+            res.render("index", { view: "waiting-room-view" });
             break;
         case "active":
-            res.render("game", {
-                game_id,
-                player_name: player.name()
-            })
+            res.render("index", { view: "game-view" });
             break;
     }
 });

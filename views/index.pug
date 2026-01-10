@@ -9,9 +9,11 @@ html
         link(rel = "stylesheet", href="/css/waiting_room.css")
         link(rel = "stylesheet", href="/css/game.css")
         link(rel = "stylesheet", href="/css/game_over.css")
-        script(type="module" src="/socket.io/socket.io.js" defer)
+        script(type="module" src="/js/lobby.js" defer)
+        script(type="module" src="/js/waiting_room.js" defer)
+        script(type="module" src="/js/game.js" defer)
         block head
     
     body
         #app
-            block main
+            #{view}
