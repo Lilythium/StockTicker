@@ -42,7 +42,7 @@ export default class StockChart extends LitElement {
                     <td
                         class="
                             price-cell
-                            ${special ? 'price-cell-special' : ''}
+                            ${special && !is_current ? 'price-cell-special' : ''}
                             ${is_current ? "current-price" : ""}
                         " 
                         data-label=${label}

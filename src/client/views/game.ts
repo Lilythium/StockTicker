@@ -1,147 +1,173 @@
+import {css, html, LitElement} from 'lit';
+import {customElement, state} from 'lit/decorators.js';
 import SocketClient from "../socket_client.js";
 import {
     ActiveGameState,
     GameEvent,
     GameState,
+    PlayerAction,
     PlayerId,
-    Stock,
 } from "../../common/index.js";
-import { CURRENT_PLAYER_ID, format_money } from "../params.js";
+import { CURRENT_PLAYER_ID } from "../params.js";
 
 import "../components/game-header.js";
 import "../components/trade-controls/index.js";
 import "../components/stock-chart.js";
-import GameHeader from "../components/game-header.js";
-import TradeControls from "../components/trade-controls/index.js";
-import StockChart from "../components/stock-chart.js";
+import "../components/player-card.js"
 
-const trade_controls = document.getElementById("tradeControls") as TradeControls;
-const game_header = document.getElementById("gameHeader") as GameHeader;
-const roll_button = document.getElementById("btnRollDice") as HTMLButtonElement;
-const done_trading_checkbox = document.getElementById("doneTradingCheckbox") as HTMLInputElement;
-const stock_chart = document.getElementById("stockChart") as StockChart;
+@customElement("game-view")
+export default class GameView extends LitElement {
+    socket: SocketClient;
 
-const socket_client = new SocketClient("active", io => {
-    io.on("update", (state: GameState) => {
-        // Collapse GameState to ActiveGameState
-        if (state.status != "active") return;
+    @state()
+    state: ActiveGameState | undefined
 
-        switch (state.phase) {
-            case "trading":
-                trade_controls.disabled = false;
-                done_trading_checkbox.disabled = false;
-                break;
-            case "dice":
-                trade_controls.disabled = true;
-                done_trading_checkbox.disabled = true;
-                break;
-        }
+    constructor() {
+        super();
 
+        this.socket = new SocketClient("active", io => {
+            io.on("update", (state: GameState) => {
+                if (state.status != "active") return;
+                this.state = state;
+            });
+
+            io.on("event", (event: GameEvent) => {
+                if (event.kind = "roll") {
+                    console.log(event);
+                }
+            });
+        });
+    }
+
+    // use light dom
+    protected createRenderRoot(): HTMLElement | DocumentFragment { return this; }
+
+    trade(e: CustomEvent<PlayerAction>) {
+        this.socket.submit_action(e.detail);
+    }
+
+    done_trading(e: InputEvent) {
+        const element = e.currentTarget as HTMLInputElement;
+        this.socket.trading_check(element.checked);
+    }
+
+    roll() {
+        this.socket.submit_action({ kind: "roll" });
+    }
+
+    render() {
         let player_turn_id: PlayerId | undefined;
-        for (const [id, player] of state.players) {
-            if (!player.done_turn) {
-                player_turn_id = id;
-                break;
+        if (this.state) {
+            for (const [id, player] of this.state.players) {
+                if (!player.done_turn) {
+                    player_turn_id = id;
+                    break;
+                }
             }
         }
         const is_my_turn = player_turn_id === CURRENT_PLAYER_ID;
 
-        if(state.phase === "dice") {
+        let roll_disabled = true;
+        let roll_text = "⏳ Loading"        
+        if(this.state?.phase === "dice") {
             if (is_my_turn) {
-                roll_button.disabled = false;
-                roll_button.textContent = '🎲 ROLL!';
+                roll_disabled = false;
+                roll_text = '🎲 ROLL!';
             } else {
-                roll_button.disabled = true;
-                roll_button.textContent = '⏳ Not Your Turn';
+                roll_text = '⏳ Not Your Turn';
             }
         } else {
-            roll_button.disabled = true;
-            roll_button.textContent = '⏳ Trading Phase';
-        }
-       
-        trade_controls.prices = state.prices;
-        game_header.state = state;
-        stock_chart.prices = state.prices;
-        update_players(state);
-    });
-    io.on("event", (event: GameEvent) => {
-        if (event.kind = "roll") {
-            console.log(event);
-        }
-    });
-});
-
-trade_controls.addEventListener("trade", e => {
-    socket_client.submit_action(e.detail);
-});
-
-done_trading_checkbox.addEventListener("change", () => {
-    socket_client.trading_check(done_trading_checkbox.checked);
-});
-
-roll_button.addEventListener("click", () => {
-    socket_client.submit_action({ kind: "roll" });
-});
-
-function update_players(state: ActiveGameState) {
-    const player_container = document.getElementById('playersContainer') as HTMLDivElement;
-    
-    let html = "";
-    const current_phase = "trading";
-    for (const [id, player] of state.players) {
-        const is_you = id as PlayerId === CURRENT_PLAYER_ID;
-        const is_offline = !player.is_connected;
-        const is_done = player.done_turn;
-
-        let portfolio_html = "";
-        let total_shares = 0;
-        let total_value = 0;
-
-        for(const stock of Object.keys(player.portfolio)) {
-            const shares = player.portfolio[stock as Stock];
-            const price = state.prices[stock as Stock];
-
-            const value = shares * price;
-            total_shares += shares;
-            total_value += value;
-
-            portfolio_html += `
-                <tr>
-                    <td class="stock-name">${stock}</td>
-                    <td class="stock-qty">${shares.toLocaleString()} <small>SHRS</small></td>
-                    <td class="stock-val">$${format_money(value)}</td>
-                </tr>`;
+            roll_text = '⏳ Trading Phase';
         }
 
-        html += `
-            <div class="player-card ${is_you ? 'current-player' : ''} ${is_offline ? 'disconnected' : ''}">
-                <div class="player-header-row">
-                    <div class="player-identity">
-                        <span class="player-name">${player.name}</span>
-                        ${is_you ? '<span class="you-badge">YOU</span>' : ''}
-                        ${is_offline ? '<span class="disconnected-badge">OFFLINE</span>' : ''}
-                        ${(is_done && current_phase === 'trading') ? '<span class="done-check">✅</span>' : ''}
+        return html`
+            <game-header .state=${this.state}></game-header>
+
+            <div class="action-form">
+                <div class="form-row three-columns">
+                    <div class="form-column column-roll">
+                        <button
+                            class="btn-roll-ready"
+                            ?disabled=${roll_disabled}
+                            @click=${this.roll}
+                        >${roll_text}</button>
                     </div>
-                    <div class="player-cash">
-                        $${format_money(player.cash)}
+
+                    <div class="form-column column-trade">
+                        <div class="trade-form">
+                            <trade-controls
+                                ?disabled=${this.state?.phase !== "trading"}
+                                .prices=${this.state?.prices}
+                                @trade=${this.trade}
+                            ></trade-controls>
+                        </div>
+                    </div>
+
+                    <div class="form-column column-done">
+                        <div class="done-trading-section">
+                            <div class="done-trading-control">
+                                <div class="checkbox-header">
+                                    <label>Done Trading?</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input
+                                        id="doneTradingCheckbox"
+                                        type="checkbox"
+                                        style="display:none;"
+                                        ?disabled=${this.state?.phase !== "trading"}
+                                        @change=${this.done_trading}
+                                    >
+                                    <label for="doneTradingCheckbox" class="checkbox-label">
+                                        <div class="checkbox-box">
+                                            <span class="checkmark">✓</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="portfolio-section">
-                    <table class="portfolio-table">
-                        <tbody>
-                            ${portfolio_html}
-                            <tr class="portfolio-totals">
-                                <td class="stock-name"><strong>Totals</strong></td>
-                                <td class="stock-qty">${total_shares.toLocaleString()}<small> SHRS</small></td>
-                                <td class="stock-val">
-                                    $${format_money(total_value)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            </div>
+
+            <div class="stocks_display">
+                <stock-chart .prices=${this.state?.prices}></stock-chart>
+            </div>
+
+            <div class="players">
+                <div class="players-container" id="playersContainer">
+                    ${
+                        this.state
+                        ? this.state.players.map(([id, state]) => html`
+                            <player-card
+                                .phase=${this.state?.phase ?? "trading"}
+                                .player_id=${id}
+                                .state=${state}
+                                .prices=${this.state?.prices}
+                            ></player-card> 
+                        `)
+                        : "Loading players..."
+                    }
                 </div>
-            </div>`;
+            </div>
+
+            <div class="history-bar" id="historyBar">
+                <div class="history-header" onclick="window.currentGameView.toggleHistory()">
+                    <span class="history-title">📜 Game History</span>
+                    <span class="history-toggle" id="historyToggle">▼</span>
+                </div>
+                <div class="history-content" id="historyContent">
+                    <div class="history-empty">Connecting...</div>
+                </div>
+            </div>
+
+            <div id="dice-overlay" class="dice-overlay" style="display: none;">
+                <div class="dice-tray">
+                    <div class="die" id="die-stock">?</div>
+                    <div class="die" id="die-action">?</div>
+                    <div class="die" id="die-amount">?</div>
+                </div>
+                <div id="dice-text" class="dice-result-text">Rolling...</div>
+            </div>
+        ` ;
     }
-
-    player_container.innerHTML = html;
 }

@@ -18,7 +18,7 @@ export default class TradeControls extends LitElement {
     @property({type: Boolean})
     disabled = true
     
-    @state()
+    @property()
     prices: StockPrices | undefined;
 
     @state()
