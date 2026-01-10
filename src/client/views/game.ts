@@ -1,5 +1,5 @@
 import {css, html, LitElement} from 'lit';
-import {customElement, state} from 'lit/decorators.js';
+import {customElement, query, state} from 'lit/decorators.js';
 import SocketClient from "../socket_client.js";
 import {
     ActiveGameState,
@@ -13,7 +13,9 @@ import { CURRENT_PLAYER_ID } from "../params.js";
 import "../components/game-header.js";
 import "../components/trade-controls/index.js";
 import "../components/stock-chart.js";
-import "../components/player-card.js"
+import "../components/player-card.js";
+import "../components/dice-overlay.js";
+import DiceOverlay from '../components/dice-overlay.js';
 
 @customElement("game-view")
 export default class GameView extends LitElement {
@@ -21,6 +23,9 @@ export default class GameView extends LitElement {
 
     @state()
     state: ActiveGameState | undefined
+
+    @query("dice-overlay")
+    dice_overlay!: DiceOverlay;
 
     constructor() {
         super();
@@ -32,8 +37,9 @@ export default class GameView extends LitElement {
             });
 
             io.on("event", (event: GameEvent) => {
-                if (event.kind = "roll") {
+                if (event.kind == "roll") {
                     console.log(event);
+                    this.dice_overlay.enqueue(event);
                 }
             });
         });
@@ -160,14 +166,7 @@ export default class GameView extends LitElement {
                 </div>
             </div>
 
-            <div id="dice-overlay" class="dice-overlay" style="display: none;">
-                <div class="dice-tray">
-                    <div class="die" id="die-stock">?</div>
-                    <div class="die" id="die-action">?</div>
-                    <div class="die" id="die-amount">?</div>
-                </div>
-                <div id="dice-text" class="dice-result-text">Rolling...</div>
-            </div>
-        ` ;
+            <dice-overlay></dice-overlay>
+        `;
     }
 }

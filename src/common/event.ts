@@ -29,6 +29,9 @@ export type GameEvent = {
     success: boolean
 };
 
+export type TradeEvent = Extract<GameEvent, { kind: "trade" }>;
+export type RollEvent = Extract<GameEvent, { kind: "roll" }>;
+
 export type History = {
     events: GameEvent[],
     net_worth: Record<PlayerId, number>[]
