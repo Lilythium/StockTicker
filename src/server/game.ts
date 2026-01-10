@@ -1,5 +1,5 @@
-import { game_manager } from "./index.js";
-
+import { BroadcastOperator } from "socket.io";
+import { DecorateAcknowledgementsWithMultipleResponses, DefaultEventsMap } from "socket.io/dist/typed-events.js";
 import Player from "./player.js";
 import {
     DEFAULT_SETTINGS,
@@ -20,8 +20,11 @@ import {
     TradePlayerAction,
 } from "../common/index.js";
 
+type IO = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<DefaultEventsMap>, any>
+
 export class Game {
     #id: GameId;
+    #io: IO;
     #status: GameStatus = "waiting";
     settings: GameSettings = DEFAULT_SETTINGS;
     #phase: GamePhase = "trading";
@@ -40,8 +43,9 @@ export class Game {
     #host_id?: PlayerId;
     #event_history: GameEvent[] = [];
 
-    constructor(id: GameId) {
+    constructor(id: GameId, io: IO) {
         this.#id = id;
+        this.#io = io;
     }
 
     id(): GameId {
@@ -252,7 +256,7 @@ export class Game {
             player.set_done(false);
         }
 
-        game_manager.post_game_update(this.#id);
+        this.post_update();
     }
     
     state(): GameState {
@@ -280,5 +284,9 @@ export class Game {
                 status: "finished"
             }
         }
+    }
+
+    post_update() {
+        this.#io.emit("update", this.state());
     }
 }

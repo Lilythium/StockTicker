@@ -73,7 +73,7 @@ app.post("/join", (req, res) => {
         });
 
         // Update waiting room
-        game_manager.post_game_update(game_id);
+        game.post_update();
 
         // Redirect to waiting room
         res.redirect(`/?game_id=${game_id}`);

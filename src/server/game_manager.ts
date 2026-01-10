@@ -24,7 +24,7 @@ export default class GameManager {
     get_or_create_game(game_id: GameId): Game {
         let game = this.#games.get(game_id);
         if (game == null) {
-            game = new Game(game_id);
+            game = new Game(game_id, this.#io.to(game_id));
             this.#games.set(game_id, game);
         }
         return game;
@@ -59,17 +59,6 @@ export default class GameManager {
         this.#players.delete(player_token);
     }
 
-    /**
-     * Post the current game state as a socket "update" event.
-     * @param game_id
-     * @returns 
-     */
-    post_game_update(game_id: GameId) {
-        const game = this.#games.get(game_id);
-        if (game == null) return;
-        this.#io.to(game_id).emit("update", game.state());
-    }
-
     #on_connection(socket: Socket) {
         console.log(`🔌 Socket connected: ${socket.id}`);
     
@@ -96,7 +85,7 @@ export default class GameManager {
         socket.on("action", action => this.#on_action(socket, action));
         socket.on("trading_check", value => this.#on_trading_check(socket, value));
 
-        this.post_game_update(game.id());
+        game.post_update();
     }
 
     #on_disconnect(socket: Socket) {
@@ -107,7 +96,7 @@ export default class GameManager {
        
         console.log(`❌ Player disconnected: ${player.name()}`);
         player.set_connected(false);
-        this.post_game_update(player.game().id());
+        player.game().post_update();
     }
 
     #on_start_game(socket: Socket, settings: GameSettings) {
@@ -119,7 +108,7 @@ export default class GameManager {
         game.settings = settings;
         if(!game.start(player.id())) return;
         console.log(`🕹️ Game '${game.id()}' started`)
-        this.post_game_update(game.id());
+        game.post_update();
     }
 
     #on_action(socket: Socket, action: PlayerAction) {
@@ -131,7 +120,7 @@ export default class GameManager {
         const game = player.game();
         const event = game.process_action(player.id(), action);
         if (!event) return;
-        this.post_game_update(game.id());
+        game.post_update();
         if(event != null) this.#io.to(game.id()).emit("event", event);
     }
 
@@ -144,6 +133,6 @@ export default class GameManager {
         player.set_done(value);
         const game = player.game();
         if (game.all_players_done()) game.end_phase();
-        this.post_game_update(game.id());
+        game.post_update();
     }
 }
