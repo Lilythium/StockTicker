@@ -81,7 +81,7 @@ export default class DiceOverlay extends LitElement {
                     >${this.stock_rolling ? "?" : this.current.stock}</div>
                     <div
                         class="die ${this.action_rolling ? "rolling" : "die-reveal"}"
-                    >${this.action_rolling ? "?" : this.current.movement}</div>
+                    >${this.action_rolling ? "?" : this.current.movement.toUpperCase()}</div>
                     <div
                         class="die ${this.amount_rolling ? "rolling" : "die-reveal"}"
                     >${this.amount_rolling ? "?" : this.current.amount}</div>
