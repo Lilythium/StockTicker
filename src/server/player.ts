@@ -96,6 +96,10 @@ export default class Player {
         this.#cash += this.#portfolio[stock] * amount;
     }
 
+    toggle_done() {
+        this.#done_turn = !this.#done_turn;
+    }
+
     set_done(value: boolean) {
         this.#done_turn = value;
     }

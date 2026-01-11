@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "outDir": "../../dist/client",
-    "rootDir": ".",
+    "rootDir": "..",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,5 +13,6 @@
     // For Lit decorators
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
-  }
+  },
+  "exclude": [ "src/server" ]
 }

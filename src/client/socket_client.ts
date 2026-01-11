@@ -26,8 +26,8 @@ export default class SocketClient {
         this.#io.emit("action", action);
     }
 
-    trading_check(value: boolean) {
-        this.#io.emit("trading_check", value);
+    trading_check() {
+        this.#io.emit("trading_check");
     }
 
     dice_roll() {

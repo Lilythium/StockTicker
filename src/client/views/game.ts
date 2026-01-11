@@ -53,8 +53,8 @@ export default class GameView extends LitElement {
     }
 
     done_trading(e: InputEvent) {
-        const element = e.currentTarget as HTMLInputElement;
-        this.socket.trading_check(element.checked);
+        this.socket.trading_check();
+        e.preventDefault();
     }
 
     roll() {
@@ -62,6 +62,8 @@ export default class GameView extends LitElement {
     }
 
     render() {
+        const me = new Map(this.state?.players).get(CURRENT_PLAYER_ID as PlayerId);
+
         let player_turn_id: PlayerId | undefined;
         if (this.state) {
             for (const [id, player] of this.state.players) {
@@ -120,6 +122,7 @@ export default class GameView extends LitElement {
                                         id="doneTradingCheckbox"
                                         type="checkbox"
                                         style="display:none;"
+                                        class="${(me?.done_turn ?? false) ? "checked" : ""}"
                                         ?disabled=${this.state?.phase !== "trading"}
                                         @change=${this.done_trading}
                                     >
