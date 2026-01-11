@@ -30,6 +30,7 @@ export class Game {
     #phase: GamePhase = { kind: "trading" };
     #phase_end?: Date;
     #phase_timeout?: NodeJS.Timeout;
+    #phase_completed: boolean = false;
     #round: number = 1;
     #prices: StockPrices = {
         Gold: PAR_PRICE,
@@ -120,10 +121,20 @@ export class Game {
      * @param player_id
      * @returns if the action was processed
      */
-    process_action(player_id: PlayerId, action: PlayerAction): GameEvent | null {
+    process_action(player_id: PlayerId, action: PlayerAction) {
+        let event;
         switch (action.kind) {
-            case "trade": return this.process_trade(player_id, action);
-            case "roll": return this.process_roll(player_id);
+            case "trade":
+                event = this.process_trade(player_id, action);
+                break;
+            case "roll":
+                event = this.process_roll(player_id);
+                break;
+        }
+        if(event != null) {
+            this.#event_history.push(event);
+            this.#io.emit("event", event);
+            this.post_update();
         }
     }
 
@@ -152,6 +163,8 @@ export class Game {
                 break;
         }
 
+        if(!succeeded) return null;
+
         const event: GameEvent = {
             kind: "trade",
             player: player_id,
@@ -160,14 +173,20 @@ export class Game {
             shares: trade.shares
         };
 
-        if (succeeded) this.#event_history.push(event);
         return event;
     }
 
     process_roll(player_id: PlayerId): GameEvent | null {
         if (this.#phase.kind !== "dice") return null;
+        const current_player_id = Array.from(this.#players.keys())[this.#phase.index];
+        if (player_id !== current_player_id) return null;
+        const roll = this.roll();
+        this.end_phase();
+        return roll;
+    }
 
-        if (player_id !== this.#players.get(player_id)?.id()) return null;
+    roll(): GameEvent | null {
+        if(this.#phase.kind != "dice") return null;
 
         const stocks = Object.keys(this.#prices);
         const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
@@ -197,6 +216,8 @@ export class Game {
                 break;                    
         }
 
+        const player_id = Array.from(this.#players.keys())[this.#phase.index];
+
         const event: GameEvent = {
             kind: "roll",
             player: player_id,
@@ -207,8 +228,7 @@ export class Game {
         };
 
         this.#event_history.push(event);
-
-        this.end_phase();
+        this.#phase_completed = true;
         
         return event;
     }
@@ -227,6 +247,10 @@ export class Game {
                 this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
                 break;
             case "dice":
+                if(!this.#phase_completed) {
+                    let roll = this.roll();
+                    this.#io.emit("event", roll);
+                }
                 if (this.#phase.index < this.#players.size - 1) {
                     this.#phase = {
                         kind: "dice",
@@ -247,7 +271,7 @@ export class Game {
                 }
                 break;
         }
-
+        this.#phase_completed = false;
         this.post_update();
     }
 

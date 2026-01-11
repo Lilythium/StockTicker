@@ -117,11 +117,7 @@ export default class GameManager {
         if (player === undefined) return;
 
         console.log(`📨 Player action submitted: ${player.name()}, ${action.kind}`);
-        const game = player.game();
-        const event = game.process_action(player.id(), action);
-        if (!event) return;
-        game.post_update();
-        if(event != null) this.#io.to(game.id()).emit("event", event);
+        player.game().process_action(player.id(), action);
     }
 
     #on_trading_check(socket: Socket, value: boolean) {
