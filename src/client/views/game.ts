@@ -67,18 +67,22 @@ export default class GameView extends LitElement {
         let player_turn_id: PlayerId | undefined;
         if (this.state) {
             for (const [id, player] of this.state.players) {
-                if (!player.done_turn) {
+                if (!player.done_trading) {
                     player_turn_id = id;
                     break;
                 }
             }
         }
-        const is_my_turn = player_turn_id === CURRENT_PLAYER_ID;
+
+        let is_my_roll = false;
+        if (this.state?.phase.kind == "dice") {
+            is_my_roll = this.state.players[this.state?.phase.index][0] === CURRENT_PLAYER_ID;
+        }
 
         let roll_disabled = true;
         let roll_text = "⏳ Loading"        
-        if(this.state?.phase === "dice") {
-            if (is_my_turn) {
+        if(this.state?.phase.kind === "dice") {
+            if (is_my_roll) {
                 roll_disabled = false;
                 roll_text = '🎲 ROLL!';
             } else {
@@ -104,7 +108,7 @@ export default class GameView extends LitElement {
                     <div class="form-column column-trade">
                         <div class="trade-form">
                             <trade-controls
-                                ?disabled=${this.state?.phase !== "trading"}
+                                ?disabled=${this.state?.phase.kind !== "trading"}
                                 .prices=${this.state?.prices}
                                 @trade=${this.trade}
                             ></trade-controls>
@@ -122,8 +126,8 @@ export default class GameView extends LitElement {
                                         id="doneTradingCheckbox"
                                         type="checkbox"
                                         style="display:none;"
-                                        class="${(me?.done_turn ?? false) ? "checked" : ""}"
-                                        ?disabled=${this.state?.phase !== "trading"}
+                                        class="${(me?.done_trading?? false) ? "checked" : ""}"
+                                        ?disabled=${this.state?.phase.kind !== "trading"}
                                         @change=${this.done_trading}
                                     >
                                     <label for="doneTradingCheckbox" class="checkbox-label">

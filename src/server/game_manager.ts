@@ -130,9 +130,9 @@ export default class GameManager {
         if (player === undefined) return;
 
         console.log(`✅ Player trading checked: ${player.name()}`);
-        player.toggle_done();
+        player.toggle_done_trading();
         const game = player.game();
-        if (game.all_players_done()) game.end_phase();
+        if (game.all_players_done_trading()) game.end_phase();
         game.post_update();
     }
 }

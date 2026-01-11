@@ -27,7 +27,7 @@ export class Game {
     #io: IO;
     #status: GameStatus = "waiting";
     settings: GameSettings = DEFAULT_SETTINGS;
-    #phase: GamePhase = "trading";
+    #phase: GamePhase = { kind: "trading" };
     #phase_end?: Date;
     #phase_timeout?: NodeJS.Timeout;
     #round: number = 1;
@@ -81,10 +81,10 @@ export class Game {
         return this.#prices[stock];
     }
 
-    all_players_done(): boolean {
+    all_players_done_trading(): boolean {
         let all = true;
         for (const [_, player] of this.#players) {
-            if (!player.is_done()) {
+            if (!player.is_done_trading()) {
                 all = false;
                 break;
             }
@@ -128,7 +128,7 @@ export class Game {
     }
 
     process_trade(player_id: PlayerId, trade: TradePlayerAction): GameEvent | null {
-        if (this.#phase !== "trading") return null;
+        if (this.#phase.kind !== "trading") return null;
 
         const player = this.#players.get(player_id);
         if (player == null) return null;
@@ -165,17 +165,9 @@ export class Game {
     }
 
     process_roll(player_id: PlayerId): GameEvent | null {
-        if (this.#phase !== "dice") return null;
+        if (this.#phase.kind !== "dice") return null;
 
-        let current_player!: Player;
-        for (const [_, player] of this.#players) {
-            if (!player.is_done()) {
-                current_player = player;
-                break;
-            }
-        }
-
-        if (player_id !== current_player.id()) return null;
+        if (player_id !== this.#players.get(player_id)?.id()) return null;
 
         const stocks = Object.keys(this.#prices);
         const stock = stocks[Math.floor(Math.random() * stocks.length)] as Stock;
@@ -205,8 +197,6 @@ export class Game {
                 break;                    
         }
 
-        current_player.set_done(true);
-
         const event: GameEvent = {
             kind: "roll",
             player: player_id,
@@ -218,17 +208,7 @@ export class Game {
 
         this.#event_history.push(event);
 
-        let all_done = true;
-        for (const [_, player] of this.#players) {
-            if (!player.is_done()) {
-                all_done = false;
-                break;
-            }
-        }
-
-        if (all_done) {
-            this.end_phase();
-        }
+        this.end_phase();
         
         return event;
     }
@@ -236,29 +216,41 @@ export class Game {
     end_phase() {
         clearTimeout(this.#phase_timeout);
         this.#phase_timeout = undefined;
-        switch (this.#phase) {
+        switch (this.#phase.kind) {
             case "trading":
-                this.#phase = "dice";
+                this.#phase = {
+                    kind: "dice",
+                    index: 0
+                };
                 const dice_duration = this.settings.dice_duration * 1000;
                 this.#phase_end = new Date(Date.now() + dice_duration);
                 this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
                 break;
             case "dice":
-                this.#phase = "trading";
-                const trading_duration = this.settings.trading_duration * 60 * 1000;
-                this.#phase_end = new Date(Date.now() + trading_duration);
-                this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
-                this.#round += 1;
+                if (this.#phase.index < this.#players.size - 1) {
+                    this.#phase = {
+                        kind: "dice",
+                        index: this.#phase.index + 1
+                    };
+                    const dice_duration = this.settings.dice_duration * 1000;
+                    this.#phase_end = new Date(Date.now() + dice_duration);
+                    this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
+                } else {
+                    this.#phase = { kind: "trading" };
+                    const trading_duration = this.settings.trading_duration * 60 * 1000;
+                    this.#phase_end = new Date(Date.now() + trading_duration);
+                    this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
+                    this.#round += 1;
+                    for (const [_, player] of this.#players) {
+                        player.set_done_trading(false);
+                    }
+                }
                 break;
-        }
-
-        for (const [_, player] of this.#players) {
-            player.set_done(false);
         }
 
         this.post_update();
     }
-    
+
     state(): GameState {
         const players: [PlayerId, PlayerState][] = [];
         for (const [id, player] of this.#players) {

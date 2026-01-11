@@ -17,7 +17,7 @@ export default class Player {
     } as Portfolio;
     #has_left: boolean = false;
     #is_connected: boolean = false;
-    #done_turn: boolean = false;
+    #done_trading: boolean = false;
 
     constructor(id: PlayerId, game: Game, name: string) {
         this.#id = id;
@@ -42,8 +42,8 @@ export default class Player {
         this.#cash = this.#game.settings.starting_cash;
     }
 
-    is_done(): boolean {
-        return this.#done_turn;
+    is_done_trading(): boolean {
+        return this.#done_trading;
     }
 
     connected(): boolean {
@@ -96,12 +96,12 @@ export default class Player {
         this.#cash += this.#portfolio[stock] * amount;
     }
 
-    toggle_done() {
-        this.#done_turn = !this.#done_turn;
+    toggle_done_trading() {
+        this.#done_trading = !this.#done_trading;
     }
 
-    set_done(value: boolean) {
-        this.#done_turn = value;
+    set_done_trading(value: boolean) {
+        this.#done_trading = value;
     }
 
     state(): PlayerState {
@@ -111,7 +111,7 @@ export default class Player {
             portfolio: this.#portfolio,
             is_connected: this.#is_connected,
             has_left: this.#has_left,
-            done_turn: this.#done_turn
+            done_trading: this.#done_trading
         }
     }
 }

@@ -33,21 +33,15 @@ export default class GameHeader extends LitElement {
         let online_count = 0;
         if(this.state) {
             for (const [_, player] of this.state.players) {
-                if (player.done_turn) done_trading_count++;
+                if (player.done_trading) done_trading_count++;
                 if (player.is_connected) online_count++;
             }
         }
 
-        let player_turn_id: PlayerId | undefined;
-        if(this.state) {
-            for (const [id, player] of this.state.players) {
-                if (!player.done_turn) {
-                    player_turn_id = id;
-                    break;
-                }
-            }
+        let is_my_roll = false;
+        if (this.state?.phase.kind == "dice") {
+            is_my_roll = this.state.players[this.state.phase.index][0] === CURRENT_PLAYER_ID;
         }
-        const is_my_turn = player_turn_id === CURRENT_PLAYER_ID;
 
         const time_remaining = (new Date(this.state?.phase_end ?? Date.now()).getTime() ?? Date.now()) - Date.now();
         const minutes = Math.floor((time_remaining / 1000) / 60).toString().padStart(2, '0');
@@ -63,18 +57,18 @@ export default class GameHeader extends LitElement {
 
                     <div class="header-section phase-logic">
                         <span class="phase-label ${this.state?.phase ?? ""}">
-                            ${this.state?.phase === 'dice' ? '🎲 DICE' :'🔄 TRADING'}
+                            ${this.state?.phase.kind === 'dice' ? '🎲 DICE' :'🔄 TRADING'}
                         </span>
                         <div class="timer" id="timer">${minutes}:${seconds}</div>
                         <div
                             class="players-status"
-                            ?hidden=${this.state?.phase !== "trading"}
+                            ?hidden=${this.state?.phase.kind !== "trading"}
                         >${done_trading_count}/${online_count} Ready</div>
                         <div
                             class="turn-status"
-                            ?hidden=${this.state?.phase !== "dice"}
+                            ?hidden=${this.state?.phase.kind !== "dice"}
                         >
-                            ${is_my_turn ? html`<span class="your-turn-pulse">YOUR TURN</span>` : 'WAITING...'}
+                            ${is_my_roll ? html`<span class="your-turn-pulse">YOUR TURN</span>` : 'WAITING...'}
                         </div>
                     </div>
 

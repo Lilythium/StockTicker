@@ -14,11 +14,16 @@ export type PlayerState = {
     portfolio: Portfolio,
     is_connected: boolean,
     has_left: boolean,
-    done_turn: boolean
+    done_trading: boolean
 };
 
 export type GameStatus = "waiting" | "active" | "finished";
-export type GamePhase = "trading" | "dice";
+export type GamePhase = {
+    kind: "trading"
+} | {
+    kind: "dice",
+    index: number
+};
 
 export type GameState = {
     status: "waiting",
