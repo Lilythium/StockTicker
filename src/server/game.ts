@@ -31,7 +31,7 @@ export class Game {
     #phase_end?: Date;
     #phase_timeout?: NodeJS.Timeout;
     #phase_completed: boolean = false;
-    #round: number = 1;
+    #round: number = 0;
     #prices: StockPrices = {
         Gold: PAR_PRICE,
         Silver: PAR_PRICE,
@@ -104,9 +104,7 @@ export class Game {
         }
         if (this.#status === "waiting") {
             this.#status = "active";
-            const trading_duration = this.settings.trading_duration * 60 * 1000;
-            this.#phase_end = new Date(Date.now() + trading_duration);
-            this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
+            this.enter_phase({ kind: "trading" });
             for (const [_, player] of this.#players) {
                 player.start();
             }
@@ -236,15 +234,13 @@ export class Game {
     end_phase() {
         clearTimeout(this.#phase_timeout);
         this.#phase_timeout = undefined;
+        let next_phase: GamePhase;
         switch (this.#phase.kind) {
             case "trading":
-                this.#phase = {
+                next_phase = {
                     kind: "dice",
                     index: 0
                 };
-                const dice_duration = this.settings.dice_duration * 1000;
-                this.#phase_end = new Date(Date.now() + dice_duration);
-                this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
                 break;
             case "dice":
                 if(!this.#phase_completed) {
@@ -252,27 +248,37 @@ export class Game {
                     this.#io.emit("event", roll);
                 }
                 if (this.#phase.index < this.#players.size - 1) {
-                    this.#phase = {
+                    next_phase = {
                         kind: "dice",
                         index: this.#phase.index + 1
                     };
-                    const dice_duration = this.settings.dice_duration * 1000;
-                    this.#phase_end = new Date(Date.now() + dice_duration);
-                    this.#phase_timeout = setTimeout(() => this.end_phase(), dice_duration);
                 } else {
-                    this.#phase = { kind: "trading" };
-                    const trading_duration = this.settings.trading_duration * 60 * 1000;
-                    this.#phase_end = new Date(Date.now() + trading_duration);
-                    this.#phase_timeout = setTimeout(() => this.end_phase(), trading_duration);
-                    this.#round += 1;
-                    for (const [_, player] of this.#players) {
-                        player.set_done_trading(false);
-                    }
+                    next_phase = { kind: "trading" };
                 }
                 break;
         }
-        this.#phase_completed = false;
+        this.enter_phase(next_phase);
         this.post_update();
+    }
+
+    enter_phase(phase: GamePhase) {
+        this.#phase = phase;
+        let duration;
+        switch (phase.kind) {
+            case "trading":
+                duration = this.settings.trading_duration * 60 * 1000;
+                this.#round += 1;
+                for (const [_, player] of this.#players) {
+                    player.set_done_trading(false);
+                }
+                break;
+            case "dice":
+                duration = this.settings.dice_duration * 1000;
+                break;
+        }
+        this.#phase_end = new Date(Date.now() + duration);
+        this.#phase_timeout = setTimeout(() => this.end_phase(), duration);
+        this.#phase_completed = false;
     }
 
     state(): GameState {
