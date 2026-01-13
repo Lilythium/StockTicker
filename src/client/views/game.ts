@@ -1,4 +1,4 @@
-import {css, html, LitElement} from 'lit';
+import {html, LitElement} from 'lit';
 import {customElement, query, state} from 'lit/decorators.js';
 import SocketClient from "../socket_client.js";
 import {
@@ -16,6 +16,7 @@ import "../components/stock-chart.js";
 import "../components/player-card.js";
 import "../components/dice-overlay.js";
 import DiceOverlay from '../components/dice-overlay.js';
+import { AUDIO_ASSETS, play_audio } from '../audio.js';
 
 @customElement("game-view")
 export default class GameView extends LitElement {
@@ -30,9 +31,18 @@ export default class GameView extends LitElement {
     constructor() {
         super();
 
+        play_audio(AUDIO_ASSETS.ui.game_start);
+
         this.socket = new SocketClient("active", io => {
             io.on("update", (state: GameState) => {
                 if (state.status != "active") return;
+                
+                if (this.state?.phase.kind == "dice" && this.state.players[this.state.phase.index][0] == CURRENT_PLAYER_ID) {
+                    play_audio(AUDIO_ASSETS.ui.your_roll);
+                } else if(this.state && this.state.phase.kind != state.phase.kind) {
+                    play_audio(AUDIO_ASSETS.ui.phase_change);
+                }
+                
                 this.state = state;
             });
 
@@ -164,7 +174,7 @@ export default class GameView extends LitElement {
             </div>
 
             <div class="history-bar" id="historyBar">
-                <div class="history-header" onclick="window.currentGameView.toggleHistory()">
+                <div class="history-header">
                     <span class="history-title">📜 Game History</span>
                     <span class="history-toggle" id="historyToggle">▼</span>
                 </div>

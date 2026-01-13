@@ -113,12 +113,6 @@ export class Game {
         return false;
     }
 
-    /**
-     * Process player's action
-     * @param action 
-     * @param player_id
-     * @returns if the action was processed
-     */
     process_action(player_id: PlayerId, action: PlayerAction) {
         let event;
         switch (action.kind) {

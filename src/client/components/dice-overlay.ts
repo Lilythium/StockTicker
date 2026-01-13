@@ -1,8 +1,21 @@
 import {css, html, LitElement} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import { RollEvent } from '../../common/index.js';
+import { AUDIO_ASSETS, play_audio } from '../audio.js';
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+function play_shaking() {
+    const shakes = AUDIO_ASSETS.shakes;
+    const shake = shakes[Math.floor(Math.random() * shakes.length)];
+    return play_audio(shake);
+}
+
+function play_landing() {
+    const lands = AUDIO_ASSETS.lands;
+    const land = lands[Math.floor(Math.random() * lands.length)];
+    return play_audio(land);
+}
 
 @customElement("dice-overlay")
 export default class DiceOverlay extends LitElement {
@@ -44,14 +57,22 @@ export default class DiceOverlay extends LitElement {
             this.action_rolling = true;
             this.amount_rolling = true;
 
-
+            play_shaking();
             await sleep(500);
             this.stock_rolling = false;
+            play_landing();
+            await sleep(250);
+            play_shaking();
             await sleep(500);
             this.action_rolling = false;
+            play_landing();
+            await sleep(250);
+            play_shaking();
             await sleep(500);
             this.amount_rolling = false;
+            play_landing();
             await sleep(500);
+            await sleep(250);
             this.finished = true;
 
             await sleep(500);
