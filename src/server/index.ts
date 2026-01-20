@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import http from "http";
 import GameManager from "./game_manager.js";
-import { PlayerToken } from "../common/index.js";
+import { GameId, PlayerToken } from "../common/index.js";
 
 // Create server
 const app = express();
@@ -45,6 +45,9 @@ app.get("/", (req, res) => {
         case "active":
             res.render("index", { view: "game-view" });
             break;
+        case "finished":
+            res.render("index", { view: "game-over-view" });
+            break;
     }
 });
 
@@ -82,6 +85,28 @@ app.post("/join", (req, res) => {
         res.status(409);
         res.send("Game already in session");
     }
+});
+
+// Results request
+app.get("/results", (req, res) => {
+    const { game_id } = req.query;
+    const game = game_manager.get_game(game_id as GameId);
+
+    if (game == undefined) {
+        res.status(404);
+        res.send("Game doesn't exist or has expired.");
+        return;
+    }
+
+    const state = game.state();
+
+    if (state.status !== "finished") {
+        res.status(409);
+        res.send("Game hasn't finished.");
+        return;
+    }
+
+    res.json(state);
 });
 
 // Start server

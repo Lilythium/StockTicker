@@ -1,5 +1,5 @@
 import { Game } from "./game.js";
-import { PlayerId, PlayerState, Portfolio, Stock } from "../common/index.js";
+import { PlayerAssets, PlayerId, PlayerState, Portfolio, Stock } from "../common/index.js";
 
 export default class Player {
     #id: PlayerId;
@@ -15,6 +15,7 @@ export default class Player {
         Industrials: 0,
         Grain: 0
     } as Portfolio;
+    #asset_history: PlayerAssets[] = [];
     #has_left: boolean = false;
     #is_connected: boolean = false;
     #done_trading: boolean = false;
@@ -40,6 +41,7 @@ export default class Player {
 
     start() {
         this.#cash = this.#game.settings.starting_cash;
+        this.end_round(); // track round "0"
     }
 
     is_done_trading(): boolean {
@@ -104,14 +106,25 @@ export default class Player {
         this.#done_trading = value;
     }
 
+    end_round() {
+        this.#asset_history.push({
+            cash: this.#cash,
+            portfolio: { ...this.#portfolio } // shallow copy
+        });
+        this.#done_trading = false;
+    }
+
     state(): PlayerState {
         return {
             name: this.#name,
-            cash: this.#cash,
-            portfolio: this.#portfolio,
+            assets: {
+                cash: this.#cash,
+                portfolio: this.#portfolio,
+            },
+            asset_history: this.#asset_history,
             is_connected: this.#is_connected,
             has_left: this.#has_left,
             done_trading: this.#done_trading
-        }
+        };
     }
 }

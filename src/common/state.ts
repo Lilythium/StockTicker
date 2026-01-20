@@ -9,12 +9,17 @@ export type StockPrices = {[K in Stock]: number} & { readonly __brand: "Portfoli
 
 export type PlayerState = {
     name: string,
-    /** Player cash in cents */
-    cash: number,
-    portfolio: Portfolio,
+    assets: PlayerAssets,
+    asset_history: PlayerAssets[],
     is_connected: boolean,
     has_left: boolean,
     done_trading: boolean
+};
+
+export type PlayerAssets = {
+    /** Player cash in cents */
+    cash: number,
+    portfolio: Portfolio
 };
 
 export type GameStatus = "waiting" | "active" | "finished";
@@ -38,7 +43,11 @@ export type GameState = {
     players: [PlayerId, PlayerState][],
     prices: StockPrices,
 } | {
-    status: "finished"
+    status: "finished",
+    settings: GameSettings,
+    players: [PlayerId, PlayerState][],
+    prices: StockPrices,
+    stock_history: StockPrices[]
 };
 
 export type WaitingGameState = Extract<GameState, { status: "waiting" }>;

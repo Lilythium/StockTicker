@@ -23,15 +23,15 @@ export default class PlayerCard extends LitElement {
     render() {
         const is_you = this.player_id as PlayerId === CURRENT_PLAYER_ID;
         const is_offline = !this.state?.is_connected;
-        const is_done = this.state?.done_turn;
+        const is_done = this.state?.done_trading;
 
         let portfolio_html = [];
         let total_shares = 0;
         let total_value = 0;
 
         if (this.state && this.prices) {
-            for(const stock of Object.keys(this.state.portfolio)) {
-                const shares = this.state.portfolio[stock as Stock];
+            for(const stock of Object.keys(this.state.assets.portfolio)) {
+                const shares = this.state.assets.portfolio[stock as Stock];
                 const price = this.prices[stock as Stock];
 
                 const value = shares * price;
@@ -58,7 +58,7 @@ export default class PlayerCard extends LitElement {
                         ${(is_done && this.phase === 'trading') ? html`<span class="done-check">✅</span>` : ''}
                     </div>
                     <div class="player-cash">
-                        $${format_money(this.state?.cash ?? 0)}
+                        $${format_money(this.state?.assets.cash ?? 0)}
                     </div>
                 </div>
                 <div class="portfolio-section">

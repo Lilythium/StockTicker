@@ -42,6 +42,7 @@ export class Game {
     } as StockPrices;
     #players = new Map<PlayerId, Player>();
     #host_id?: PlayerId;
+    #stock_history: StockPrices[] = [this.#prices];
     #event_history: GameEvent[] = [];
 
     constructor(id: GameId, io: IO) {
@@ -228,7 +229,7 @@ export class Game {
     end_phase() {
         clearTimeout(this.#phase_timeout);
         this.#phase_timeout = undefined;
-        let next_phase: GamePhase;
+        let next_phase: GamePhase | undefined;
         switch (this.#phase.kind) {
             case "trading":
                 next_phase = {
@@ -247,11 +248,13 @@ export class Game {
                         index: this.#phase.index + 1
                     };
                 } else {
+                    if (this.#round === this.settings.max_rounds) break;
                     next_phase = { kind: "trading" };
                 }
                 break;
         }
-        this.enter_phase(next_phase);
+        if(next_phase) this.enter_phase(next_phase);
+        else this.#status = "finished";
         this.post_update();
     }
 
@@ -263,8 +266,9 @@ export class Game {
                 duration = this.settings.trading_duration * 60 * 1000;
                 this.#round += 1;
                 for (const [_, player] of this.#players) {
-                    player.set_done_trading(false);
+                    player.end_round();
                 }
+                this.#stock_history.push(this.#prices);
                 break;
             case "dice":
                 duration = this.settings.dice_duration * 1000;
@@ -297,7 +301,11 @@ export class Game {
                 prices: this.#prices
             }
             case "finished": return {
-                status: "finished"
+                status: "finished",
+                settings: this.settings,
+                players,
+                prices: this.#prices,
+                stock_history: this.#stock_history
             }
         }
     }

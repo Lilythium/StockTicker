@@ -21,8 +21,12 @@ export default class GameManager {
         this.#io.on("connection", socket => this.#on_connection(socket));
     }
 
+    get_game(game_id: GameId): Game | undefined {
+        return this.#games.get(game_id);
+    }
+
     get_or_create_game(game_id: GameId): Game {
-        let game = this.#games.get(game_id);
+        let game = this.get_game(game_id);
         if (game == null) {
             game = new Game(game_id, this.#io.to(game_id));
             this.#games.set(game_id, game);
