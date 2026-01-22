@@ -1,12 +1,12 @@
 import {css, html, LitElement} from 'lit';
-import {customElement, query} from 'lit/decorators.js';
+import {customElement, query, state} from 'lit/decorators.js';
 
 import trade_control_styles from "../../styles/trade-controls.js";
 
 @customElement("amount-controls")
 export default class AmountControls extends LitElement {
-    @query("#amountInput")
-    amount_input!: HTMLInputElement;
+    @state()
+    amount: number = 500;
 
     static styles = [
         trade_control_styles,
@@ -78,15 +78,14 @@ export default class AmountControls extends LitElement {
         `
     ];
 
-    changed(e: InputEvent) {
-        const element = e.currentTarget as HTMLInputElement;
-        const amount = parseInt(element.value);
-        this.dispatchEvent(new CustomEvent("amount-changed", { detail: amount }))
+    set_amount(amount: number) {
+        this.amount = amount;
+        this.dispatchEvent(new CustomEvent("amount-changed", { detail: amount }));
     }
 
-    set_amount(amount: number) {
-        this.amount_input.value = amount.toString();
-        this.amount_input.dispatchEvent(new Event("input"));
+    delta_amount(delta: number) {
+        this.amount += delta;
+        this.dispatchEvent(new CustomEvent("amount-changed", { detail: this.amount }));
     }
 
     render() {
@@ -96,13 +95,20 @@ export default class AmountControls extends LitElement {
                     type="number"
                     id="amountInput"
                     class="amount-input"
-                    value="500"
+                    .value=${this.amount.toString()}
                     readonly
-                    @input=${this.changed}
                 >
                 <div class="spin-buttons">
-                    <button type="button" class="spin-btn spin-up">▲</button>
-                    <button type="button" class="spin-btn spin-down">▼</button>
+                    <button
+                        type="button"
+                        class="spin-btn spin-up"
+                        @click=${() => this.delta_amount(+500)}
+                    >▲</button>
+                    <button
+                        type="button"
+                        class="spin-btn spin-down"
+                        @click=${() => this.delta_amount(-500)}
+                     >▼</button>
                 </div>
             </div>
             <div class="share-quick-buttons">
