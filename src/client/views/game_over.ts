@@ -1,8 +1,9 @@
 import {html, LitElement} from 'lit';
 import {customElement, query, state} from 'lit/decorators.js';
 import { CURRENT_PLAYER_ID, format_money, GAME_ID } from '../params.js';
-import { FinishedGameState, PlayerAssets, PlayerId, PlayerState, Stock, StockPrices } from '../../common/index.js';
+import { FinishedGameState, PlayerAssets, Stock, StockPrices } from '../../common/index.js';
 import { Chart, registerables } from 'chart.js';
+import { AUDIO_ASSETS, play_audio } from '../audio.js';
 
 Chart.register(...registerables);
 
@@ -24,6 +25,7 @@ export default class GameOverView extends LitElement {
     connectedCallback(): void {
         super.connectedCallback();
         this.fetch_results();
+        play_audio(AUDIO_ASSETS.ui.game_over);
     }
 
     async fetch_results() {
@@ -52,6 +54,10 @@ export default class GameOverView extends LitElement {
             networth += shares * price;
         }
         return networth;
+    }
+
+    return_lobby() {
+        window.location.href = "/";
     }
 
     render() {
@@ -106,7 +112,7 @@ export default class GameOverView extends LitElement {
                         <div class="leaderboard"> ${rankings} </div>
 
                         <div class="end-actions">
-                            <button onclick="window.currentGameOverView.returnToLobby()" 
+                            <button @click=${this.return_lobby} 
                                     class="btn-primary" style="margin-top: 20px;">
                                 Return to Lobby
                             </button>
